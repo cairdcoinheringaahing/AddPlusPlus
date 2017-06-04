@@ -110,13 +110,13 @@ class StackScript:
                 '^':lambda: self.stack.push(self.stack.pop() ** self.stack.pop()),
                 '%':lambda: self.stack.push(self.stack.pop() % self.stack.pop()),
                 '@':lambda: self.stack.reverse(),
-                '!':lambda: self.stack.push(not (self.stack.pop() % 2 == 0)),
+                '!':lambda: self.stack.push(not (self.stack.pop() == 0)),
                 '#':lambda: self.stack.sort(),
                 ';':lambda: self.stack.push(self.stack.pop() * 2),
                 '|':lambda: self.stack.push(abs(self.stack.pop())),
                 '<':lambda: self.stack.push(self.stack.pop() < self.stack.pop()),
                 '>':lambda: self.stack.push(self.stack.pop() > self.stack.pop()),
-                '?':lambda: self.stack.push(self.stack.pop() % 2 == 0),
+                '?':lambda: self.stack.push(self.stack.pop() == 0),
                 '=':lambda: self.stack.push(self.stack.pop() == self.stack.pop()),
                 'e':lambda: self.__init__(''.join(map(ord, self.stack))),
                 'c':lambda: self.stack.clear(),
@@ -125,7 +125,15 @@ class StackScript:
                 'V':lambda: self.remove(0),
                 'v':lambda: self.remove(1),
                 'L':lambda: self.stack.push(len(self.stack)),
+                'P':lambda: self.stack.push(self.isprime()),
                 }
+                
+    def isprime(self):
+        x = self.stack.pop()
+        for i in range(2,x):
+            if x % i == 0:
+                return False
+        return True
 
     def run(self):
         v = self.stack.pop()
@@ -208,10 +216,10 @@ class Script:
                     for i in range(self.x):
                         self.__init__('\n'.join(cmd),inputs,i)
                 if cmd[0] == 'I':
-                    if self.x % 2 == 0:
+                    if self.x:
                         self.__init__('\n'.join(cmd),inputs)
                 if cmd[0] == 'W':
-                    while self.x % 2 == 0:
+                    while self.x:
                         self.__init__('\n'.join(cmd),inputs)
                 if cmd[0] == 'D':
                     func_name = cmd[1]
@@ -230,6 +238,8 @@ class Script:
                                 I += 1
                             except:
                                 args.append(0)
+                        elif c == 'x':
+                            args.append(self.x)
                         else:
                             args.append(eval_(c))
                     self.x = func(*args)
