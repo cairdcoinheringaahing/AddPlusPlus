@@ -174,7 +174,7 @@ class Script:
         self.functions = {}
         I = 0
 
-        self.x = 0
+        self.x = x
         
         f = code[:]
         code.clear()
@@ -268,6 +268,8 @@ class Script:
                         if symbol == '?':
                             v = inputs[I]
                             I += 1
+                        else:
+                            v = None
                     if v is None:
                         continue
                     self.x = v
