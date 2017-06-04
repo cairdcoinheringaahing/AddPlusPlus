@@ -173,6 +173,8 @@ class Script:
         self.string = ''
         self.functions = {}
         I = 0
+
+        self.x = 0
         
         f = code[:]
         code.clear()
