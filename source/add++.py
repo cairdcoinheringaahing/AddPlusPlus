@@ -172,6 +172,7 @@ class Script:
             
         self.string = ''
         self.functions = {}
+        self.stored = []
         I = 0
 
         self.x = x
@@ -298,6 +299,8 @@ class Script:
                 'R':self.randint,
                 'S':math.sqrt,
                 'Q':lambda: print(self.code),
+                'V':self.store,
+                'G':self.get,
 
                 'F':self,
                 'I':self,
@@ -349,6 +352,12 @@ class Script:
 
     def randint(self,y=0):
         return random.randint(y, self.x)
+        
+    def store(self):
+        self.stored.append(self.x)
+        
+    def get(self):
+        self.x = self.stored.pop(-1)
 
     def next(self):
         self.string += chr(self.x)
