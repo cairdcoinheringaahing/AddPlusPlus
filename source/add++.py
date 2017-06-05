@@ -110,13 +110,13 @@ class StackScript:
                 '^':lambda: self.stack.push(self.stack.pop() ** self.stack.pop()),
                 '%':lambda: self.stack.push(self.stack.pop() % self.stack.pop()),
                 '@':lambda: self.stack.reverse(),
-                '!':lambda: self.stack.push(not (self.stack.pop() % 2 == 0)),
+                '!':lambda: self.stack.push(not (self.stack.pop() == 0)),
                 '#':lambda: self.stack.sort(),
                 ';':lambda: self.stack.push(self.stack.pop() * 2),
                 '|':lambda: self.stack.push(abs(self.stack.pop())),
                 '<':lambda: self.stack.push(self.stack.pop() < self.stack.pop()),
                 '>':lambda: self.stack.push(self.stack.pop() > self.stack.pop()),
-                '?':lambda: self.stack.push(self.stack.pop() % 2 == 0),
+                '?':lambda: self.stack.push(self.stack.pop() == 0),
                 '=':lambda: self.stack.push(self.stack.pop() == self.stack.pop()),
                 'e':lambda: self.__init__(''.join(map(ord, self.stack))),
                 'c':lambda: self.stack.clear(),
@@ -125,7 +125,15 @@ class StackScript:
                 'V':lambda: self.remove(0),
                 'v':lambda: self.remove(1),
                 'L':lambda: self.stack.push(len(self.stack)),
+                'P':lambda: self.stack.push(self.isprime()),
                 }
+                
+    def isprime(self):
+        x = self.stack.pop()
+        for i in range(2,x):
+            if x % i == 0:
+                return False
+        return True
 
     def run(self):
         v = self.stack.pop()
@@ -166,6 +174,8 @@ class Script:
         self.functions = {}
         I = 0
 
+        self.x = x
+        
         f = code[:]
         code.clear()
         for i in range(len(f)):
@@ -181,7 +191,10 @@ class Script:
             i = 1
             assign = code[0].split(':')[1]
             if assign == '?':
-                self.x = inputs[I]
+                try:
+                    self.x = inputs[I]
+                except:
+                    self.x = 0
                 I += 1
             else:
                 self.x = eval_(assign)
@@ -205,10 +218,10 @@ class Script:
                     for i in range(self.x):
                         self.__init__('\n'.join(cmd),inputs,i)
                 if cmd[0] == 'I':
-                    if self.x % 2 == 0:
+                    if self.x:
                         self.__init__('\n'.join(cmd),inputs)
                 if cmd[0] == 'W':
-                    while self.x % 2 == 0:
+                    while self.x:
                         self.__init__('\n'.join(cmd),inputs)
                 if cmd[0] == 'D':
                     func_name = cmd[1]
@@ -219,7 +232,18 @@ class Script:
                     self.functions[func_name] = Function(func_name,func_args,func_code)
                 if cmd[0][0] == '$':
                     func = self.functions[cmd[0][1:]]
-                    args = list(map(eval_, cmd[1:]))
+                    args = []
+                    for c in cmd[1:]:
+                        if c == '?':
+                            try:
+                                args.append(inputs[I])
+                                I += 1
+                            except:
+                                args.append(0)
+                        elif c == 'x':
+                            args.append(self.x)
+                        else:
+                            args.append(eval_(c))
                     self.x = func(*args)
                     
             else:
@@ -244,6 +268,8 @@ class Script:
                         if symbol == '?':
                             v = inputs[I]
                             I += 1
+                        else:
+                            v = None
                     if v is None:
                         continue
                     self.x = v
@@ -334,7 +360,7 @@ if __name__ == '__main__':
     program = sys.argv[1]
     inputs = list(map(eval_, sys.argv[2:]))
 
-    if program.endwith('.txt'):
+    if program.endswith('.txt'):
         Script(open(program).read(),inputs)
     else:
         Script(program,inputs)
