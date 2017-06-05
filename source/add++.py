@@ -126,6 +126,7 @@ class StackScript:
                 'v':lambda: self.remove(1),
                 'L':lambda: self.stack.push(len(self.stack)),
                 'P':lambda: self.stack.push(self.isprime()),
+                'p':lambda: self.stack.pop()
                 }
                 
     def isprime(self):
@@ -249,6 +250,9 @@ class Script:
                     
             else:
                 symbol = cmd[0]
+                if symbol == "_":
+                    for i in inputs:
+                        self.stored.append(i)
                 if len(cmd) > 1:
                     value = eval_(cmd[1:])
                 else:
