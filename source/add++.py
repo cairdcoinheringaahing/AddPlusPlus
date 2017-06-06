@@ -231,10 +231,10 @@ class Script:
         for cmd in code[i:]:
             if type(cmd) == list:
                 if cmd[0] == 'F':
-                    for i in range(self.x):
+                    for i in range(int(self.x)):
                         self.__init__('\n'.join(cmd),inputs,recur=True)
                 if cmd[0] == 'E':
-                    for i in range(self.x):
+                    for i in range(int(self.x)):
                         self.__init__('\n'.join(cmd),inputs,i,recur=True)
                 if cmd[0] == 'I':
                     if self.x:
