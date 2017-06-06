@@ -241,7 +241,7 @@ class Script:
                         self.__init__('\n'.join(cmd),inputs,recur=True)
                 if cmd[0] == 'W':
                     while self.x:
-                        self.__init__('\n'.join(cmd),inputs,recur=True)
+                        self.__init__('\n'.join(cmd),inputs,self.x,recur=True)
                 if cmd[0] == 'D':
                     func_name = cmd[1]
                     if func_name in 'NPORSFIWD':
