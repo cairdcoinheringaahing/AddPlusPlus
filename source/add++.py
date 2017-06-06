@@ -126,6 +126,9 @@ class StackScript:
                 'v':lambda: self.remove(1),
                 'L':lambda: self.stack.push(len(self.stack)),
                 'P':lambda: self.stack.push(self.isprime()),
+                'p':lambda: self.stack.pop(),
+                'h':lambda: print(self.stack),
+                '&':lambda: self.stack.push(self.stack.pop() and self.stack.pop())
                 }
                 
     def isprime(self):
@@ -166,12 +169,14 @@ class Function:
 
 class Script:
 
-    def __init__(self,code,inputs=(),x=0):
+    def __init__(self,code,inputs=(),x=0,recur=False):
         
         code = list(map(lambda x: x.split(','), filter(None, code.split('\n'))))
             
         self.string = ''
         self.functions = {}
+        if not recur:
+            self.stored = []
         I = 0
 
         self.x = x
@@ -210,6 +215,7 @@ class Script:
                     self.code = code
             
         for cmd in code[i:]:
+            print(cmd, self.stored)
             if type(cmd) == list:
                 if cmd[0] == 'F':
                     for i in range(self.x):
@@ -242,12 +248,17 @@ class Script:
                                 args.append(0)
                         elif c == 'x':
                             args.append(self.x)
+                        elif c == 'G':
+                            args.append(self.stored.pop())
                         else:
                             args.append(eval_(c))
                     self.x = func(*args)
                     
             else:
                 symbol = cmd[0]
+                if symbol == "_":
+                    for i in inputs:
+                        self.stored.append(i)
                 if len(cmd) > 1:
                     value = eval_(cmd[1:])
                 else:
@@ -257,6 +268,11 @@ class Script:
                     if value == '?':
                         value = inputs[I]
                         I += 1
+                    if value == 'G':
+                        try:
+                            value = self.stored.pop()
+                        except:
+                            print(self.stored)
                     try:
                         self.x = self.COMMANDS[symbol](value)
                     except:
@@ -298,6 +314,8 @@ class Script:
                 'R':self.randint,
                 'S':math.sqrt,
                 'Q':lambda: print(self.code),
+                'V':self.store,
+                'G':self.get,
 
                 'F':self,
                 'I':self,
@@ -349,10 +367,15 @@ class Script:
 
     def randint(self,y=0):
         return random.randint(y, self.x)
+        
+    def store(self):
+        self.stored.append(self.x)
+        
+    def get(self):
+        self.x = self.stored.pop(-1)
 
     def next(self):
         self.string += chr(self.x)
-
 if __name__ == '__main__':
 
     import sys
