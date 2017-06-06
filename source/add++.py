@@ -30,12 +30,19 @@ class StackScript:
     def __init__(self,code,stack=Stack()):
         self.stack = stack
         self.code = StackScript.tokenize(code)
+        cont = False
         for cmd in self.code:
+            if cont:
+                continue
             if cmd[0] == '"':
                 self.stack.push(cmd[1:])
             elif isdigit(cmd):
                 self.stack.push(eval_(cmd))
             else:
+                if cmd == 'r':
+                    if self.stack.pop():
+                        cont = True
+                    continue
                 command = self.COMMANDS[cmd]
                 command()
 
@@ -99,8 +106,15 @@ class StackScript:
             if final[i][0] == '[' and final[i][-1] == '}':
                 final[i] = '"'+final[i][1:-1]
 
-        return final
+        try:
+            r_index = final.index('R')
+        except:
+            r_index = -1
             
+        if r_index == -1:
+            return final
+        return final[:r_index]
+    
     @property
     def COMMANDS(self):
         return {'+':lambda: self.stack.push(self.stack.pop() + self.stack.pop()),
@@ -110,13 +124,13 @@ class StackScript:
                 '^':lambda: self.stack.push(self.stack.pop() ** self.stack.pop()),
                 '%':lambda: self.stack.push(self.stack.pop() % self.stack.pop()),
                 '@':lambda: self.stack.reverse(),
-                '!':lambda: self.stack.push(not (self.stack.pop() == 0)),
+                '!':lambda: self.stack.push(not self.stack.pop()),
                 '#':lambda: self.stack.sort(),
                 ';':lambda: self.stack.push(self.stack.pop() * 2),
                 '|':lambda: self.stack.push(abs(self.stack.pop())),
                 '<':lambda: self.stack.push(self.stack.pop() < self.stack.pop()),
                 '>':lambda: self.stack.push(self.stack.pop() > self.stack.pop()),
-                '?':lambda: self.stack.push(self.stack.pop() == 0),
+                '?':lambda: self.stack.push(bool(self.stack.pop())),
                 '=':lambda: self.stack.push(self.stack.pop() == self.stack.pop()),
                 'e':lambda: self.__init__(''.join(map(ord, self.stack))),
                 'c':lambda: self.stack.clear(),
@@ -126,7 +140,9 @@ class StackScript:
                 'v':lambda: self.remove(1),
                 'L':lambda: self.stack.push(len(self.stack)),
                 'P':lambda: self.stack.push(self.isprime()),
-                'p':lambda: self.stack.pop()
+                'p':lambda: self.stack.pop(),
+                'h':lambda: print(self.stack),
+                '&':lambda: self.stack.push(self.stack.pop() and self.stack.pop())
                 }
                 
     def isprime(self):
@@ -167,13 +183,14 @@ class Function:
 
 class Script:
 
-    def __init__(self,code,inputs=(),x=0):
+    def __init__(self,code,inputs=(),x=0,recur=False):
         
         code = list(map(lambda x: x.split(','), filter(None, code.split('\n'))))
             
         self.string = ''
         self.functions = {}
-        self.stored = []
+        if not recur:
+            self.stored = []
         I = 0
 
         self.x = x
@@ -215,16 +232,16 @@ class Script:
             if type(cmd) == list:
                 if cmd[0] == 'F':
                     for i in range(self.x):
-                        self.__init__('\n'.join(cmd),inputs)
+                        self.__init__('\n'.join(cmd),inputs,recur=True)
                 if cmd[0] == 'E':
                     for i in range(self.x):
-                        self.__init__('\n'.join(cmd),inputs,i)
+                        self.__init__('\n'.join(cmd),inputs,i,recur=True)
                 if cmd[0] == 'I':
                     if self.x:
-                        self.__init__('\n'.join(cmd),inputs)
+                        self.__init__('\n'.join(cmd),inputs,recur=True)
                 if cmd[0] == 'W':
                     while self.x:
-                        self.__init__('\n'.join(cmd),inputs)
+                        self.__init__('\n'.join(cmd),inputs,recur=True)
                 if cmd[0] == 'D':
                     func_name = cmd[1]
                     if func_name in 'NPORSFIWD':
@@ -265,7 +282,10 @@ class Script:
                         value = inputs[I]
                         I += 1
                     if value == 'G':
-                        value = self.stored.pop()
+                        try:
+                            value = self.stored.pop()
+                        except:
+                            print(self.stored)
                     try:
                         self.x = self.COMMANDS[symbol](value)
                     except:
