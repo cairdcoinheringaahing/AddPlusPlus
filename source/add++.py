@@ -264,6 +264,8 @@ class Script:
                     if value == '?':
                         value = inputs[I]
                         I += 1
+                    if value == 'G':
+                        value = self.stored.pop()
                     try:
                         self.x = self.COMMANDS[symbol](value)
                     except:
