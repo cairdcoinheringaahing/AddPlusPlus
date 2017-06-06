@@ -244,6 +244,8 @@ class Script:
                                 args.append(0)
                         elif c == 'x':
                             args.append(self.x)
+                        elif c == 'G':
+                            args.append(self.stored.pop())
                         else:
                             args.append(eval_(c))
                     self.x = func(*args)
