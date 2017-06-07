@@ -194,6 +194,7 @@ class Script:
         I = 0
 
         self.x = x
+        self.y = 0
         
         f = code[:]
         code.clear()
@@ -261,6 +262,8 @@ class Script:
                                 args.append(0)
                         elif c == 'x':
                             args.append(self.x)
+                        elif c == 'y':
+                            args.append(self.y)
                         elif c == 'G':
                             args.append(self.stored.pop())
                         else:
@@ -272,6 +275,8 @@ class Script:
                 if symbol == "_":
                     for i in inputs:
                         self.stored.append(i)
+                if symbol == '}':
+                    self.x, self.y = self.y, self.x
                 if len(cmd) > 1:
                     value = eval_(cmd[1:])
                 else:
@@ -286,6 +291,10 @@ class Script:
                             value = self.stored.pop()
                         except:
                             print(self.stored)
+                    if value == 'x':
+                        value = self.x
+                    if value == 'y':
+                        value = self.y
                     try:
                         self.x = self.COMMANDS[symbol](value)
                     except:
