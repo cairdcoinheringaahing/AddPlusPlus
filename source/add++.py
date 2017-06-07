@@ -152,11 +152,14 @@ class StackScript:
                 return False
         return True
 
-    def run(self):
-        v = self.stack.pop()
-        while self.stack:
-            self.stack.pop()
-        return v
+    def run(self,flag=True):
+        if flag:
+            v = self.stack.pop()
+            while self.stack:
+                self.stack.pop()
+            return v
+        else:
+            return self.stack.copy()
     
     def remove(self,even_odd):
         stack = list(filter(lambda x: x%2 == int(bool(even_odd)), self.stack))
@@ -165,19 +168,20 @@ class StackScript:
 
 class Function:
 
-    def __init__(self,name,args,code):
+    def __init__(self,name,args,code,return_flag):
         self.name = name
         self.args = args
         self.code = code[0]
         self.stack = Stack()
+        self.flag = return_flag
 
     def __call__(self,*args):
         args = list(args)
         while len(args) != self.args:
             args.append(-1)
         self.stack.push(*args)
-        return StackScript(self.code,self.stack).run()
-
+        return StackScript(self.code,self.stack).run(self.flag)
+        
     def __repr__(self):
         return 'function {} that takes {} arguments and contains the code {}'.format(self.name,self.args,self.code)
 
@@ -248,8 +252,9 @@ class Script:
                     if func_name in 'NPORSFIWD':
                         return None
                     func_args = cmd[2].count('@')
+                    return_flag = '*' in cmd[2]
                     func_code = cmd[3:]
-                    self.functions[func_name] = Function(func_name,func_args,func_code)
+                    self.functions[func_name] = Function(func_name,func_args,func_code,return_flag)
                 if cmd[0][0] == '$':
                     func = self.functions[cmd[0][1:]]
                     args = []
@@ -268,7 +273,13 @@ class Script:
                             args.append(self.stored.pop())
                         else:
                             args.append(eval_(c))
-                    self.x = func(*args)
+                    value = func(*args)
+                    if type(value) == list:
+                        for v in value:
+                            self.stored.append(v)
+                        self.x = v
+                    else:
+                        self.x = value
                     
             else:
                 symbol = cmd[0]
