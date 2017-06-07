@@ -1,5 +1,5 @@
 import math, random
-print("CURRENTLY UNDER DEVELOPMENT AND TESTING. NOT STABLE FOR USE WHILE THIS IS DHOWN")
+
 def isdigit(string):
     return all(i in '1234567890-.' for i in string)
 
@@ -152,13 +152,15 @@ class StackScript:
                 return False
         return True
 
-    def run(self,flag=False):
+    def run(self,flag,text):
         if not flag:
             v = self.stack.pop()
             while self.stack:
                 self.stack.pop()
             return v
         else:
+            if text:
+                return "".join(self.stack)
             return self.stack.copy()
     
     def remove(self,even_odd):
@@ -168,19 +170,20 @@ class StackScript:
 
 class Function:
 
-    def __init__(self,name,args,code,return_flag):
+    def __init__(self,name,args,code,return_flag,text):
         self.name = name
         self.args = args
         self.code = code[0]
         self.stack = Stack()
         self.flag = return_flag
+        self.text = text
 
     def __call__(self,*args):
         args = list(args)
         while len(args) != self.args:
             args.append(-1)
         self.stack.push(*args)
-        return StackScript(self.code,self.stack).run(self.flag)
+        return StackScript(self.code,self.stack).run(self.flag,self.text)
         
     def __repr__(self):
         return 'function {} that takes {} arguments and contains the code {}'.format(self.name,self.args,self.code)
@@ -253,8 +256,9 @@ class Script:
                         return None
                     func_args = cmd[2].count('@')
                     return_flag = '*' in cmd[2]
+                    text_flag = '^' in cmd[2]
                     func_code = cmd[3:]
-                    self.functions[func_name] = Function(func_name,func_args,func_code,return_flag)
+                    self.functions[func_name] = Function(func_name,func_args,func_code,return_flag,text_flag)
                 if cmd[0][0] == '$':
                     func = self.functions[cmd[0][1:]]
                     args = []
@@ -274,11 +278,12 @@ class Script:
                         else:
                             args.append(eval_(c))
                     value = func(*args)
-                    print(value, type(value))
                     if type(value) == list:
                         for v in value:
                             self.stored.append(v)
                         self.x = v
+                    elif type(value) == str:
+                        self.stored.append(value)
                     else:
                         self.x = value
                     
