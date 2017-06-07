@@ -1,5 +1,5 @@
 import math, random
-
+print("CURRENTLY UNDER DEVELOPMENT AND TESTING. NOT STABLE FOR USE WHILE THIS IS DHOWN")
 def isdigit(string):
     return all(i in '1234567890-.' for i in string)
 
@@ -152,8 +152,8 @@ class StackScript:
                 return False
         return True
 
-    def run(self,flag=True):
-        if flag:
+    def run(self,flag=False):
+        if not flag:
             v = self.stack.pop()
             while self.stack:
                 self.stack.pop()
@@ -274,6 +274,7 @@ class Script:
                         else:
                             args.append(eval_(c))
                     value = func(*args)
+                    print(value, type(value))
                     if type(value) == list:
                         for v in value:
                             self.stored.append(v)
