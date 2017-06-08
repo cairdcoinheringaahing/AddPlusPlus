@@ -142,8 +142,9 @@ class StackScript:
                 'P':lambda: self.stack.push(self.isprime()),
                 'p':lambda: self.stack.pop(),
                 'h':lambda: print(self.stack),
-                '&':lambda: self.stack.push(self.stack.pop() and self.stack.pop())
-                }
+                '&':lambda: self.stack.push(self.stack.pop() and self.stack.pop()),
+                'S':lambda: self.stack.push(self.remove_duplicates())
+               }
                 
     def isprime(self):
         x = self.stack.pop()
@@ -151,6 +152,13 @@ class StackScript:
             if x % i == 0:
                 return False
         return True
+    
+    def remove_duplicates(self):
+        final = []
+        for s in self.stack:
+            if s not in final:
+                final.append(s)
+        return final
 
     def run(self,flag,text):
         if not flag:
