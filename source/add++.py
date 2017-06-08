@@ -14,17 +14,76 @@ def eval_(string):
 class Stack(list):
     def push(self,*values):
         for v in values:
-            if type(v) == str:
-                for c in v:
-                    self.append(ord(c))
-            else:
-                self.append(v)
+            self.append(v)
     def pop(self,index=-1):
         try:
             return super().pop(index)
         except:
             return -1
+        
+def add(x,y):
+    if type(x) == str:
+        return x + str(y)
+    if type(y) == int:
+        return x + y
+    return x
 
+def subtract(x,y):
+    if type(x) == str:
+        x = list(x)
+        for c in str(y):
+            x.remove(c)
+        return "".join(x)
+    if type(y) == int:
+        return x - y
+    return x
+
+def multiply(x,y):
+    if type(x) == str and type(y) == str:
+        final = ""
+        for a,b in zip(x,y):
+            final += chr(ord(a)+ord(b))
+        return final
+    return x * y
+
+def divide(x,y):
+    if type(x) == str:
+        if type(y) == str:
+            final = ""
+            for a,b in zip(x,y):
+                final += chr(max(ord(a),ord(b))-min(ord(a),ord(b)))
+            return final
+        return x[:len(x)//y]
+
+def exponent(x,y):
+    if type(x) == str and type(y) == str:
+        final = ""
+        for a,b in zip(x,y):
+            final += [a,b][b>a]
+        return final
+    if type(x) == int and type(y) == int:
+        return x ** y
+    c = x if type(x) == int else y
+    d = y if c == x else x
+    final = d
+    for i in range(c-1):
+        final = multiply(final,d)
+    return final
+
+def modulo(x,y):
+    if type(x) == str and type(y) == str:
+        return [y,x][len(x)>len(y)][:min(len(x),len(y))]
+    if type(x) == str and type(y) == int:
+        return x[::y][-1] if len(x)%2 == 1 else ""
+    if type(x) == int and type(y) == str:
+        return y[::x][-1] if len(y)%2 == 1 else ""
+    return x%y
+
+def absolute(x):
+    if type(x) == str:
+        return x
+    return abs(x)
+    
 class StackScript:
 
     def __init__(self,code,stack=Stack()):
@@ -117,27 +176,24 @@ class StackScript:
     
     @property
     def COMMANDS(self):
-        return {'+':lambda: self.stack.push(self.stack.pop() + self.stack.pop()),
-                '-':lambda: self.stack.push(self.stack.pop() - self.stack.pop()),
-                '*':lambda: self.stack.push(self.stack.pop() * self.stack.pop()),
-                '/':lambda: self.stack.push(self.stack.pop() / self.stack.pop()),
-                '^':lambda: self.stack.push(self.stack.pop() ** self.stack.pop()),
-                '%':lambda: self.stack.push(self.stack.pop() % self.stack.pop()),
+        return {'+':lambda: self.stack.push(add(self.stack.pop(), self.stack.pop())),
+                '-':lambda: self.stack.push(subtract(self.stack.pop(), self.stack.pop())),
+                '*':lambda: self.stack.push(multiply(self.stack.pop(), self.stack.pop())),
+                '/':lambda: self.stack.push(divide(self.stack.pop(), self.stack.pop())),
+                '^':lambda: self.stack.push(exponent(self.stack.pop(), self.stack.pop())),
+                '%':lambda: self.stack.push(modulo(self.stack.pop(), self.stack.pop())),
                 '@':lambda: self.stack.reverse(),
                 '!':lambda: self.stack.push(not self.stack.pop()),
                 '#':lambda: self.stack.sort(),
                 ';':lambda: self.stack.push(self.stack.pop() * 2),
-                '|':lambda: self.stack.push(abs(self.stack.pop())),
+                '|':lambda: self.stack.push(absolute(self.stack.pop())),
                 '<':lambda: self.stack.push(self.stack.pop() < self.stack.pop()),
                 '>':lambda: self.stack.push(self.stack.pop() > self.stack.pop()),
                 '?':lambda: self.stack.push(bool(self.stack.pop())),
                 '=':lambda: self.stack.push(self.stack.pop() == self.stack.pop()),
-                'e':lambda: self.__init__(''.join(map(ord, self.stack))),
                 'c':lambda: self.stack.clear(),
                 'd':lambda: self.stack.push(self.stack[-1]),
                 'D':lambda: self.stack.push(self.stack[-self.stack.pop()]),
-                'V':lambda: self.remove(0),
-                'v':lambda: self.remove(1),
                 'L':lambda: self.stack.push(len(self.stack)),
                 'P':lambda: self.stack.push(self.isprime()),
                 'p':lambda: self.stack.pop(),
@@ -148,6 +204,8 @@ class StackScript:
                 
     def isprime(self):
         x = self.stack.pop()
+        if type(x) == str:
+            return False
         for i in range(2,x):
             if x % i == 0:
                 return False
