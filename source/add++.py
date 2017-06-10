@@ -83,6 +83,14 @@ def absolute(x):
     if type(x) == str:
         return x
     return abs(x)
+
+def isprime(x):
+    if type(x) == str:
+        return False
+    for i in range(2,x):
+        if x%i == 0:
+            return False
+    return True
     
 class StackScript:
 
@@ -195,23 +203,14 @@ class StackScript:
                 'd':lambda: self.stack.push(self.stack[-1]),
                 'D':lambda: self.stack.push(self.stack[-self.stack.pop()]),
                 'L':lambda: self.stack.push(len(self.stack)),
-                'P':lambda: self.stack.push(self.isprime()),
+                'P':lambda: self.stack.push(isprime(self.stack.pop())),
                 'p':lambda: self.stack.pop(),
                 'h':lambda: print(self.stack),
                 '&':lambda: self.stack.push(self.stack.pop() and self.stack.pop()),
                 'S':lambda: self.stack.push(*self.remove_duplicates()),
                 'F':lambda: self.stack.push(*self.factors()),
-                'f':lambda: self.stack.push(*filter(self.isprime, self.factors())),
+                'f':lambda: self.stack.push(*filter(isprime, self.factors())),
                }
-                
-    def isprime(self):
-        x = self.stack.pop()
-        if type(x) == str:
-            return False
-        for i in range(2,x):
-            if x % i == 0:
-                return False
-        return True
     
     def factors(self):
         lof = []
