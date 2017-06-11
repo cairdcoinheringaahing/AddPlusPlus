@@ -20,8 +20,6 @@ You can name the function anything you want. Literally anything, except for the 
 
 The number of arguments for a function are defined as the number of `@` in the `<arguments>` section. Each `@` represents 1 argument. If you include a `*` in the arguments the entire stack is returned from the function, rather than just the top item. An `^` being included means that it returns the stack as a string
 
-**TAKE NOTE! These two symbol commands are currently under development; dp not use with certainty**
-
 ### Code
 
 Functions use a stack memory system, compared to `main` which uses an accumulator (`x`)
