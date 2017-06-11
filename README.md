@@ -1,4 +1,6 @@
-# Add++
+# Add++ [frozen-development]
+
+**Add++ is no longer being updated and will stay as it is. No more features will be added and any existing bugs will remain**
 
 Add++ is a functional, line by line programming language that may or may not be Turing complete.
 
