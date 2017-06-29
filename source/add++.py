@@ -499,8 +499,10 @@ if __name__ == '__main__':
 
     program = sys.argv[1]
     inputs = list(map(eval_, sys.argv[2:]))
-
-    if program.endswith('.txt'):
-        Script(open(program).read(),inputs)
-    else:
-        Script(program,inputs)
+    try:
+        if program.endswith('.txt'):
+            Script(open(program).read(),inputs)
+        else:
+            Script(program,inputs)
+    except:
+        print('Error encountered!')
