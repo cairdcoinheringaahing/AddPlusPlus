@@ -427,6 +427,7 @@ class Script:
                 'N':self.not_,
                 'P':self.print,
                 'O':self.print_,
+                'H':self._print,
                 'R':self.randint,
                 'S':math.sqrt,
                 'Q':lambda: print(self.code),
@@ -480,6 +481,12 @@ class Script:
 
     def print_(self):
         print(self.x)
+        
+    def _print(self):
+        if self.string:
+            print(end=self.string)
+        else:
+            print(end=chr(self.x))
 
     def randint(self,y=0):
         return random.randint(y, self.x)
