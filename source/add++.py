@@ -438,6 +438,7 @@ class Script:
                 'F':self,
                 'I':self,
                 'W':self,
+                'E':self,
                 'D':self}
 
     def add(self,y):
