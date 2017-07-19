@@ -415,7 +415,7 @@ class Script:
                 '-':self.minus,
                 '*':self.times,
                 '/':self.divide,
-                '\':self.int_divide,
+                '\\':self.int_divide,
                 '^':self.power,
                 '>':self.double,
                 '<':self.half,
@@ -453,7 +453,7 @@ class Script:
         return self.x / y
     
     def int_divide(self,y):
-        rrturn self.x // y
+        return self.x // y
 
     def power(self,y):
         return self.x ** y
