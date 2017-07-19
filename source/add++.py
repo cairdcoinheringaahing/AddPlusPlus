@@ -419,7 +419,7 @@ class Script:
                 '^':self.power,
                 '>':self.double,
                 '<':self.half,
-                '!':math.factorial,
+                '!':self.factorial,
                 '%':self.modulo,
                 '~':self.negative,
                 '=':self.equal,
@@ -430,8 +430,8 @@ class Script:
                 'O':self.print_,
                 'H':self._print,
                 'R':self.randint,
-                'S':math.sqrt,
-                'Q':lambda: print(self.code),
+                'S':self.sqrt,
+                'Q':self.quine,
                 'V':self.store,
                 'G':self.get,
 
@@ -463,6 +463,9 @@ class Script:
 
     def half(self):
         return self.x / 2
+    
+    def factorial(self):
+        return math.factorial(self.x)
 
     def modulo(self,y):
         return self.x % y
@@ -494,6 +497,12 @@ class Script:
 
     def randint(self,y=0):
         return random.randint(y, self.x)
+    
+    def sqrt(self):
+        return math.sqrt(self.x)
+    
+    def quine(self):
+        print(self.code)
         
     def store(self):
         self.stored.append(self.x)
