@@ -159,7 +159,7 @@ class StackScript:
     @property
     def COMMANDS(self):
         return {'+':lambda: self.stack.push(add(self.stack.pop(), self.stack.pop())),
-                '-':lambda: self.stack.push(subtract(self.stack.pop(), self.stack.pop())),
+                '_':lambda: self.stack.push(subtract(self.stack.pop(), self.stack.pop())),
                 '*':lambda: self.stack.push(multiply(self.stack.pop(), self.stack.pop())),
                 '/':lambda: self.stack.push(divide(self.stack.pop(), self.stack.pop())),
                 '^':lambda: self.stack.push(exponent(self.stack.pop(), self.stack.pop())),
