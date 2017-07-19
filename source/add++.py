@@ -502,7 +502,7 @@ class Script:
         return math.sqrt(self.x)
     
     def quine(self):
-        print(self.code)
+        print('\n'.join(self.code))
         
     def store(self):
         self.stored.append(self.x)
