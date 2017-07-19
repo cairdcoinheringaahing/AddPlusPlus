@@ -153,14 +153,8 @@ class StackScript:
         if num:
             final.append(num)
 
-        try:
-            r_index = final.index('R')
-        except:
-            r_index = -1
-            
-        if r_index == -1:
-            return final
-        return final[:r_index]
+        final = list(filter(lambda s: s!= '"', final))
+        return final
     
     @property
     def COMMANDS(self):
@@ -186,13 +180,15 @@ class StackScript:
                 'P':lambda: self.stack.push(isprime(self.stack.pop())),
                 'p':lambda: self.stack.pop(),
                 'h':lambda: print(self.stack),
+                'H':lambda: print(''.join(map(str, self.stack))),
                 '&':lambda: self.stack.push(self.stack.pop() and self.stack.pop()),
                 'S':lambda: self.stack.push(*self.remove_duplicates()),
                 's':lambda: self.stack.push(sum(self.stack)),
                 'F':lambda: self.stack.push(*self.factors()),
                 'f':lambda: self.stack.push(*filter(isprime, self.factors())),
                 ':':lambda: self.stack.push(self.stack[-2]),
-                'A':lambda: self.stack.push(*self.args)
+                'A':lambda: self.stack.push(*self.args),
+                'N':lambda: self.stack.push('\n'.join(map(str, self.stack)))
                }
     
     def factors(self):
@@ -212,11 +208,18 @@ class StackScript:
                 final.append(s)
         return final
 
+    @staticmethod
+    def stringify(value):
+        try:
+            return chr(int(abs(value)))
+        except:
+            return str(value)
+
     def run(self,flag,text):
         if flag:
             return self.stack
         if text:
-            return ''.join(list(map(lambda i: chr(int(i)), self.stack)))
+            return ''.join(list(map(StackScript.stringify, self.stack)))
         return self.stack.pop()
     
     def remove(self,even_odd):
@@ -229,7 +232,7 @@ class Function:
     def __init__(self,name,args,code,return_flag,text):
         self.name = name
         self.args = args
-        self.code = code[0]
+        self.code = code
         self.stack = Stack()
         self.flag = return_flag
         self.text = text
