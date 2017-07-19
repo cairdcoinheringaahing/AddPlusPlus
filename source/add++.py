@@ -384,7 +384,7 @@ class Script:
                         try:
                             value = self.stored.pop()
                         except:
-                            print(self.stored)
+                            self.x += self.x
                     if value == 'x':
                         value = self.x
                     if value == 'y':
