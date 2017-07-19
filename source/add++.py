@@ -94,7 +94,8 @@ def isprime(x):
     
 class StackScript:
 
-    def __init__(self,code,stack=Stack()):
+    def __init__(self,code,args,stack=Stack()):
+        self.args = args
         self.stack = stack
         self.code = StackScript.tokenize(code)
         cont = False
@@ -120,28 +121,11 @@ class StackScript:
         temp = ''
         num = ''
         instr = False
-        instrstart = False
-        instrend = False
         
         for char in text:
             
-            if char == '{':
-                instrstart = True
-                continue
-            if instrstart:
-                if char == '[':
-                    instr = True
-                instrstart = False
-                
-            if char == ']':
-                instrend = True
-                continue
-            if instrend:
-                if char == '}':
-                    temp += char
-                    instr = False
-                instrend = False
-                continue
+            if char == '"':
+                instr = not instr
 
             if instr:
                 temp += char
@@ -168,10 +152,6 @@ class StackScript:
             final.append(temp)
         if num:
             final.append(num)
-
-        for i in range(len(final)):
-            if final[i][0] == '[' and final[i][-1] == '}':
-                final[i] = '"'+final[i][1:-1]
 
         try:
             r_index = final.index('R')
@@ -208,8 +188,11 @@ class StackScript:
                 'h':lambda: print(self.stack),
                 '&':lambda: self.stack.push(self.stack.pop() and self.stack.pop()),
                 'S':lambda: self.stack.push(*self.remove_duplicates()),
+                's':lambda: self.stack.push(sum(self.stack)),
                 'F':lambda: self.stack.push(*self.factors()),
                 'f':lambda: self.stack.push(*filter(isprime, self.factors())),
+                ':':lambda: self.stack.push(self.stack[-2]),
+                'A':lambda: self.stack.push(*self.args)
                }
     
     def factors(self):
@@ -230,15 +213,11 @@ class StackScript:
         return final
 
     def run(self,flag,text):
-        if not flag:
-            v = self.stack.pop()
-            while self.stack:
-                self.stack.pop()
-            return v
-        else:
-            if text:
-                return "".join(self.stack)
-            return self.stack.copy()
+        if flag:
+            return self.stack
+        if text:
+            return ''.join(list(map(lambda i: chr(int(i)), self.stack)))
+        return self.stack.pop()
     
     def remove(self,even_odd):
         stack = list(filter(lambda x: x%2 == int(bool(even_odd)), self.stack))
@@ -260,7 +239,9 @@ class Function:
         while len(args) != self.args:
             args.append(-1)
         self.stack.push(*args)
-        return StackScript(self.code,self.stack).run(self.flag,self.text)
+        script = StackScript(self.code,args,self.stack)
+        value = script.run(self.flag,self.text)
+        return value
         
     def __repr__(self):
         return 'function {} that takes {} arguments and contains the code {}'.format(self.name,self.args,self.code)
@@ -334,7 +315,7 @@ class Script:
                     func_args = cmd[2].count('@')
                     return_flag = '*' in cmd[2]
                     text_flag = '^' in cmd[2]
-                    func_code = cmd[3:]
+                    func_code = ''.join(cmd[3:])
                     self.functions[func_name] = Function(func_name,func_args,func_code,return_flag,text_flag)
                 if cmd[0][0] == '$':
                     func = self.functions[cmd[0][1:]]
@@ -358,11 +339,9 @@ class Script:
                     if type(value) == list:
                         for v in value:
                             self.stored.append(v)
-                        self.x = v
-                    elif type(value) == str:
+                    if type(value) == str:
                         self.stored.append(value)
-                    else:
-                        self.x = value
+                    self.x = value
                     
             else:
                 symbol = cmd[0]
@@ -384,7 +363,7 @@ class Script:
                         try:
                             value = self.stored.pop()
                         except:
-                            self.x += self.x
+                            pass
                     if value == 'x':
                         value = self.x
                     if value == 'y':
