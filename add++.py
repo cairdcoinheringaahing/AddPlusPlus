@@ -54,6 +54,7 @@ def divide(x,y):
                 final += chr(max(ord(a),ord(b))-min(ord(a),ord(b)))
             return final
         return x[:len(x)//y]
+    return x / y
 
 def exponent(x,y):
     if type(x) == str and type(y) == str:
