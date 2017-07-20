@@ -187,9 +187,10 @@ class StackScript:
                 's':lambda: self.stack.push(sum(self.stack)),
                 'F':lambda: self.stack.push(*self.factors()),
                 'f':lambda: self.stack.push(*filter(isprime, self.factors())),
-                ':':lambda: self.stack.push(self.stack[-2]),
                 'A':lambda: self.stack.push(*self.args),
-                'N':lambda: self.stack.push('\n'.join(map(str, self.stack)))
+                'N':lambda: self.stack.push('\n'.join(map(str, self.stack))),
+                'O':lambda: self.stack.push(ord(self.stack.pop())),
+                'C':lambda: self.stack.push(chr(self.stack.pop())),
                }
     
     def factors(self):
