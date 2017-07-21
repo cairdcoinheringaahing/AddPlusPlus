@@ -22,21 +22,22 @@ class Stack(list):
             return -1
         
 def add(x,y):
-    if type(x) == str:
-        return x + str(y)
-    if type(y) == int:
-        return x + y
-    return x
+    if type(x) == str and type(y) == int:
+        return ''.join(map(lambda c: chr(ord(c)+y), x))
+    if type(x) == int and type(y) == str:
+        return ''.join(map(lambda c: chr(ord(c)+x), y))
+    return x + y
 
 def subtract(x,y):
-    if type(x) == str:
-        x = list(x)
-        for c in str(y):
-            x.remove(c)
-        return "".join(x)
-    if type(y) == int:
-        return x - y
-    return x
+    if type(x) == str and type(y) == str:
+        for char in y:
+            x.remove(char)
+        return x
+    if type(x) == str and type(y) == int:
+        return ''.join(map(lambda c: chr(ord(c)-y), x))
+    if type(x) == int and type(y) == str:
+        return ''.join(map(lambda c: chr(ord(c)-x), y))
+    return x - y
 
 def multiply(x,y):
     if type(x) == str and type(y) == str:
@@ -44,16 +45,22 @@ def multiply(x,y):
         for a,b in zip(x,y):
             final += chr(ord(a)+ord(b))
         return final
+    if type(x) == str and type(y) == int:
+        return ''.join(map(lambda c: chr(ord(c)*y), x))
+    if type(x) == int and type(y) == str:
+        return ''.join(map(lambda c: chr(ord(c)*x), y))
     return x * y
 
 def divide(x,y):
-    if type(x) == str:
-        if type(y) == str:
+    if type(x) == str and type(y) == str:
             final = ""
             for a,b in zip(x,y):
                 final += chr(max(ord(a),ord(b))-min(ord(a),ord(b)))
             return final
-        return x[:len(x)//y]
+    if type(x) == str and type(y) == int:
+        return ''.join(map(lambda c: chr(ord(c)//y), x))
+    if type(x) == int and type(y) == str:
+        return ''.join(map(lambda c: chr(ord(c)//x), y))
     return x / y
 
 def exponent(x,y):
@@ -75,9 +82,9 @@ def modulo(x,y):
     if type(x) == str and type(y) == str:
         return [y,x][len(x)>len(y)][:min(len(x),len(y))]
     if type(x) == str and type(y) == int:
-        return x[::y][-1] if len(x)%2 == 1 else ""
+        return ''.join(map(lambda c: chr(ord(c)%y), x))
     if type(x) == int and type(y) == str:
-        return y[::x][-1] if len(y)%2 == 1 else ""
+        return ''.join(map(lambda c: chr(ord(c)%x), y))
     return x%y
 
 def absolute(x):
