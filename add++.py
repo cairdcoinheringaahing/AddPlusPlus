@@ -22,6 +22,11 @@ class Stack(list):
             return -1
         
 def add(x,y):
+    if type(x) == str and type(y) == str:
+        final = ""
+        for a,b in zip(x,y):
+            final += chr(ord(a)+ord(b))
+        return final
     if type(x) == str and type(y) == int:
         return ''.join(map(lambda c: chr(ord(c)+y), x))
     if type(x) == int and type(y) == str:
@@ -43,7 +48,7 @@ def multiply(x,y):
     if type(x) == str and type(y) == str:
         final = ""
         for a,b in zip(x,y):
-            final += chr(ord(a)+ord(b))
+            final += chr(ord(a)*ord(b))
         return final
     if type(x) == str and type(y) == int:
         return ''.join(map(lambda c: chr(ord(c)*y), x))
