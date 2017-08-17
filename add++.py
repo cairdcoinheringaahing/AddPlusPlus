@@ -243,18 +243,20 @@ class StackScript:
 
 class Function:
 
-    def __init__(self,name,args,code,return_flag,text):
+    def __init__(self,name,args,code,return_flag,text,variable):
         self.name = name
         self.args = args
         self.code = code
         self.stack = Stack()
         self.flag = return_flag
         self.text = text
+        self.variable = variable
 
     def __call__(self,*args):
         args = list(args)
-        while len(args) != self.args:
-            args.append(-1)
+        if not self.variable:
+            while len(args) != self.args:
+                args.append(-1)
         self.stack.push(*args)
         script = StackScript(self.code,args,self.stack)
         value = script.run(self.flag,self.text)
@@ -332,8 +334,9 @@ class Script:
                     func_args = cmd[2].count('@')
                     return_flag = '*' in cmd[2]
                     text_flag = '^' in cmd[2]
+                    variable = '?' in cmd[2]
                     func_code = ''.join(cmd[3:])
-                    self.functions[func_name] = Function(func_name,func_args,func_code,return_flag,text_flag)
+                    self.functions[func_name] = Function(func_name,func_args,func_code,return_flag,text_flag,variable)
                 if cmd[0][0] == '$':
                     func = self.functions[cmd[0][1:]]
                     args = []
