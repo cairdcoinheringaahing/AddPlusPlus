@@ -337,7 +337,10 @@ class Script:
                     variable = '?' in cmd[2]
                     func_code = ''.join(cmd[3:])
                     self.functions[func_name] = Function(func_name,func_args,func_code,return_flag,text_flag,variable)
-                if cmd[0][0] == '$':
+                    
+            else:
+                if cmd[0] == '$':
+                    cmd = cmd.split('>')
                     func = self.functions[cmd[0][1:]]
                     args = []
                     for c in cmd[1:]:
@@ -362,48 +365,47 @@ class Script:
                     if type(value) == str:
                         self.stored.append(value)
                     self.x = value
-                    
-            else:
-                symbol = cmd[0]
-                if symbol == "_":
-                    for i in inputs:
-                        self.stored.append(i)
-                if symbol == '}':
-                    self.x, self.y = self.y, self.x
-                if len(cmd) > 1:
-                    value = eval_(cmd[1:])
                 else:
-                    value = None
+                    symbol = cmd[0]
+                    if symbol == "_":
+                        for i in inputs:
+                            self.stored.append(i)
+                    if symbol == '}':
+                        self.x, self.y = self.y, self.x
+                    if len(cmd) > 1:
+                        value = eval_(cmd[1:])
+                    else:
+                        value = None
 
-                if value:
-                    if value == '?':
-                        value = inputs[I]
-                        I += 1
-                    if value == 'G':
-                        try:
-                            value = self.stored.pop()
-                        except:
-                            pass
-                    if value == 'x':
-                        value = self.x
-                    if value == 'y':
-                        value = self.y
-                    try:
-                        self.x = self.COMMANDS[symbol](value)
-                    except:
-                        continue
-                else:
-                    try:
-                        v = self.COMMANDS[symbol]()
-                    except:
-                        if symbol == '?':
-                            v = inputs[I]
+                    if value:
+                        if value == '?':
+                            value = inputs[I]
                             I += 1
-                        else:
-                            v = None
-                    if v is None:
-                        continue
-                    self.x = v
+                        if value == 'G':
+                            try:
+                                value = self.stored.pop()
+                            except:
+                                pass
+                        if value == 'x':
+                            value = self.x
+                        if value == 'y':
+                            value = self.y
+                        try:
+                            self.x = self.COMMANDS[symbol](value)
+                        except:
+                            continue
+                    else:
+                        try:
+                            v = self.COMMANDS[symbol]()
+                        except:
+                            if symbol == '?':
+                                v = inputs[I]
+                                I += 1
+                            else:
+                                v = None
+                        if v is None:
+                            continue
+                        self.x = v
 
     def __call__(self,*values):
         return None
