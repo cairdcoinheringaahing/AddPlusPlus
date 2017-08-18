@@ -36,7 +36,7 @@ def add(x,y):
 def subtract(x,y):
     if type(x) == str and type(y) == str:
         for char in y:
-            x = x.replace(char, "", 1)
+            x = x.replace(char, "")
         return x
     if type(x) == str and type(y) == int:
         return ''.join(map(lambda c: chr(ord(c)-y), x))
