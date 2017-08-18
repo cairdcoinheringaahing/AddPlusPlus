@@ -337,6 +337,31 @@ class Script:
                     variable = '?' in cmd[2]
                     func_code = ''.join(cmd[3:])
                     self.functions[func_name] = Function(func_name,func_args,func_code,return_flag,text_flag,variable)
+                if cmd[0][0] == '$':
+                    func = self.functions[cmd[0][1:]]
+                    args = []
+                    for c in cmd[1:]:
+                        if c == '?':
+                            try:
+                                args.append(inputs[I])
+                                I += 1
+                            except:
+                                args.append(0)
+                        elif c == 'x':
+                            args.append(self.x)
+                        elif c == 'y':
+                            args.append(self.y)
+                        elif c == 'G':
+                            args.append(self.stored.pop())
+                        else:
+                            args.append(eval_(c))
+                    value = func(*args)
+                    if type(value) == list:
+                        for v in value:
+                            self.stored.append(v)
+                    if type(value) == str:
+                        self.stored.append(value)
+                    self.x = value
                     
             else:
                 if cmd[0] == '$':
