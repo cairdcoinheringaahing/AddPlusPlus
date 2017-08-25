@@ -375,19 +375,41 @@ class Script:
                     
             else:
                 if cmd[:2] == 'x:':
-                    value = cmd[2:]
-                    if value == '?':
-                        self.x = inputs[I]
-                        I += 1
+                    c = cmd[2:]
+                    if c == '?':
+                        try:
+                            self.x = inputs[I]
+                            I += 1
+                        except:
+                            self.x = 0
+                    elif c == 'x':
+                        self.x = self.x
+                    elif c == 'y':
+                        self.x = self.y
+                    elif c == 'G':
+                        self.x = self.stored.pop()
+                    elif c == 'g':
+                        self.x = self.stored[-1]
                     else:
-                        self.x = eval_(value)
+                        self.x = eval_(c)
                 elif cmd[:2] == 'y:':
-                    value = cmd[2:]
-                    if value == '?':
-                        self.y = inputs[I]
-                        I += 1
+                    c = cmd[2:]
+                    if c == '?':
+                        try:
+                            self.y = inputs[I]
+                            I += 1
+                        except:
+                            self.y = 0
+                    elif c == 'x':
+                        self.y = self.x
+                    elif c == 'y':
+                        self.y = self.y
+                    elif c == 'G':
+                        self.y = self.stored.pop()
+                    elif c == 'g':
+                        self.y = self.stored[-1]
                     else:
-                        self.y = eval_(value)
+                        self.y = eval_(c)
                 elif cmd[0] == '$':
                     cmd = cmd.split('>')
                     func = self.functions[cmd[0][1:]]
@@ -405,6 +427,8 @@ class Script:
                             args.append(self.y)
                         elif c == 'G':
                             args.append(self.stored.pop())
+                        elif c == 'g':
+                            args.append(self.stored[-1])
                         else:
                             args.append(eval_(c))
                     value = func(*args)
