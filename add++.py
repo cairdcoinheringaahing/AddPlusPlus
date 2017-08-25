@@ -381,6 +381,13 @@ class Script:
                         I += 1
                     else:
                         self.x = eval_(value)
+                elif cmd[:2] == 'y:':
+                    value = cmd[2:]
+                    if value == '?':
+                        self.y = inputs[I]
+                        I += 1
+                    else:
+                        self.y = eval_(value)
                 elif cmd[0] == '$':
                     cmd = cmd.split('>')
                     func = self.functions[cmd[0][1:]]
