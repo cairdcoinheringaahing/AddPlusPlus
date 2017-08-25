@@ -48,9 +48,9 @@ def multiply(x,y):
             final += chr(ord(a)+ord(b))
         return final
     if type(x) == str and type(y) == int:
-        return ''.join(map(lambda c: chr(ord(c)*y), x))
+        return ''.join(map(lambda c: c*y, x))
     if type(x) == int and type(y) == str:
-        return ''.join(map(lambda c: chr(ord(c)*x), y))
+        return x * y
     return x * y
 
 def divide(x,y):
