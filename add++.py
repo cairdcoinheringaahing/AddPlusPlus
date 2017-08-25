@@ -227,7 +227,7 @@ class StackScript:
                 'B&':lambda: self.apply(lambda l: functools.reduce(operator.and_, l)),
                 'B|':lambda: self.apply(lambda l: functools.reduce(operator.or_, l)),
                 'B^':lambda: self.apply(lambda l: functools.reduce(operator.xor, l)),
-                'B~':lambda: self.apply(lambda l: functools.reduce(operator.inv, l)),
+                'B~':lambda: self.apply(operator.inv),
                 'BM':lambda: self.apply(max),
                 'Bm':lambda: self.apply(min),
                 'B]':lambda: self.wrap(),
@@ -246,7 +246,7 @@ class StackScript:
                 'b&':lambda: self.stack.push(functools.reduce(operator.and_, self.stack.pop())),
                 'b|':lambda: self.stack.push(functools.reduce(operator.or_, self.stack.pop())),
                 'b^':lambda: self.stack.push(functools.reduce(operator.xor, self.stack.pop())),
-                'b~':lambda: self.stack.push(functools.reduce(operator.inv, self.stack.pop())),
+                'b~':lambda: self.stack.push(map(operator.inv, self.stack.pop())),
                }
 
     def apply(self, func):
