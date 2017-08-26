@@ -306,7 +306,7 @@ class StackScript:
 
 class Function:
 
-    def __init__(self,name,args,code,return_flag,text,variable):
+    def __init__(self,name,args,code,return_flag,text,variable,output):
         self.name = name
         self.args = args
         self.code = code
@@ -314,6 +314,7 @@ class Function:
         self.flag = return_flag
         self.text = text
         self.variable = variable
+        self.out = output
 
     def __call__(self,*args):
         if not self.variable:
@@ -323,6 +324,8 @@ class Function:
         self.stack.push(*args)
         script = StackScript(self.code,args,self.stack)
         value = script.run(self.flag,self.text)
+        if self.out:
+            print(value)
         return value
         
     def __repr__(self):
@@ -388,8 +391,9 @@ class Script:
                     return_flag = '*' in cmd[2]
                     text_flag = '^' in cmd[2]
                     variable = '?' in cmd[2]
+                    output = ':' in cmd[2]
                     func_code = ','.join(cmd[3:])
-                    self.functions[func_name] = Function(func_name,func_args,func_code,return_flag,text_flag,variable)
+                    self.functions[func_name] = Function(func_name,func_args,func_code,return_flag,text_flag,variable,output)
                     
             else:
                 if cmd[:2] == 'x:':
