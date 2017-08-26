@@ -209,6 +209,7 @@ class StackScript:
                 'o':lambda: self.stack.push(self.stack.pop() or self.stack.pop()),
                 'M':lambda: self.stack.push(max(self.stack)),
                 'm':lambda: self.stack.push(min(self.stack)),
+                'n':lambda: self.join(),
 
                 'Bx':lambda: self.stack.push(self.stack.pop() ^ self.stack.pop()),
                 'Ba':lambda: self.stack.push(self.stack.pop() & self.stack.pop()),
@@ -251,6 +252,11 @@ class StackScript:
 
     def apply(self, func):
         self.stack = Stack(map(func, self.stack))
+        
+    def join(self):
+        newstack = Stack()
+        newstack.push('\n'.join(self.stack))
+        self.stack = newstack
     
     def factors(self):
         lof = []
