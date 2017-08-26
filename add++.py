@@ -82,7 +82,7 @@ def exponent(x,y):
 
 def modulo(x,y):
     if type(x) == str and type(y) == str:
-        return [y,x][len(x)>len(y)][:min(len(x),len(y))]
+        return x % y
     if type(x) == str and type(y) == int:
         return ''.join(map(lambda c: chr(ord(c)%y), x))
     if type(x) == int and type(y) == str:
