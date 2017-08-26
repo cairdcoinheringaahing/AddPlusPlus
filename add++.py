@@ -210,6 +210,8 @@ class StackScript:
                 'M':lambda: self.stack.push(max(self.stack)),
                 'm':lambda: self.stack.push(min(self.stack)),
                 'n':lambda: self.join(),
+                'R':lambda: self.stack.push(list(range(1, self.stack.pop()+1))),
+                'r':lambda: self.stack.push(list(range(self.stack.pop(), self.stack.pop()))),
 
                 'Bx':lambda: self.stack.push(self.stack.pop() ^ self.stack.pop()),
                 'Ba':lambda: self.stack.push(self.stack.pop() & self.stack.pop()),
