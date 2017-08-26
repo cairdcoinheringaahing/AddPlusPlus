@@ -255,7 +255,7 @@ class StackScript:
         
     def join(self):
         newstack = Stack()
-        newstack.push('\n'.join(self.stack))
+        newstack.push('\n'.join(map(str, self.stack)))
         self.stack = newstack
     
     def factors(self):
