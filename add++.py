@@ -510,7 +510,7 @@ class Script:
                         if v is None:
                             continue
                         self.x = v
-        if not self.called:
+        if not self.called and self.functions:
             func = self.functions[list(self.functions.keys())[0]]
             func()
 
