@@ -14,7 +14,10 @@ def eval_(string):
 class Stack(list):
     def push(self,*values):
         for v in values:
-            self.append(v)
+            try:
+                self.append(v.replace("'",'"'))
+            except:
+                self.append(v)
     def pop(self,index=-1):
         try:
             return super().pop(index)
