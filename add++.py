@@ -1,5 +1,58 @@
 import functools, math, operator, random
-from error import *
+
+class EmptyStackError(Exception):
+    def __init__(self, num, line):
+        
+        self.message = '''EmptyStackError
+    line {}: '{}'
+        The stack is empty, and is unable to be popped from'''.format(num, line)
+        
+        super(EmptyStackError, self).__init__(self.message)
+
+class UnableToRetrieveFunctionError(Exception):
+    def __init__(self, num, line, name):
+
+        self.message = '''UnableToRetrieveFunctionError
+    line {}: '{}'
+        Unable to retrieve function {}. {} must be defined before calling'''.format(num, line, name, name)
+
+        super(UnableToRetrieveFunctionError, self).__init__(self.message)
+
+class EmptySecondStackError(Exception):
+    def __init__(self, num, line):
+        
+        self.message = '''EmptySecondStackError
+    line {}: '{}'
+        The second stack is empty, and is unable to be popped from'''.format(num, line)
+
+        super(EmptySecondStackError, self).__init__(self.message)
+
+class NoMoreInputError(Exception):
+    def __init__(self, num, line):
+        
+        self.message = '''NoMoreInputError
+    line {}: '{}'
+        All input has been used, and cannot be used again'''.format(num, line)
+
+        super(NoMoreInputError, self).__init__(self.message)
+
+class InvalidSymbolError(Exception):
+    def __init__(self, num, line, char):
+        
+        self.message = '''InvalidSymbolError
+    line {}: '{}'
+        The character {} is an invalid Add++ character'''.format(num, line, char)
+
+        super(InvalidSymbolError, self).__init__(self.message)
+
+class DivisionByZeroError(Exception):
+    def __init__(self, num, line):
+        
+        self.message = '''DivisionByZeroError
+    line {}: '{}'
+        The laws of mathematics dictate that you are unable to divide by 0'''.format(num, line)
+
+        super(DivisionByZeroError, self).__init__(self.message)
 
 def isdigit(string):
     return all(i in '1234567890-.' for i in string)
