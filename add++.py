@@ -346,6 +346,7 @@ class Script:
         code = list(map(lambda x: x.split(','), filter(None, code.split('\n'))))
             
         if not recur:
+            self.called = False
             self.stored = []
             self.string = ''
             self.functions = {}
@@ -438,6 +439,7 @@ class Script:
                     else:
                         self.y = eval_(c)
                 elif cmd[0] == '$':
+                    self.called = True
                     cmd = cmd.split('>')
                     func = self.functions[cmd[0][1:]]
                     args = []
@@ -508,6 +510,9 @@ class Script:
                         if v is None:
                             continue
                         self.x = v
+        if not self.called:
+            func = self.functions[list(self.functions.keys())[0]]
+            func()
 
     def __call__(self,*values):
         return None
