@@ -1,4 +1,5 @@
 import functools, math, operator, random
+from error import *
 
 def isdigit(string):
     return all(i in '1234567890-.' for i in string)
@@ -22,7 +23,8 @@ class Stack(list):
         try:
             return super().pop(index)
         except:
-            return -1
+            raise EmptyStackError()
+    
     def swap(self):
         self[-1], self[-2] = self[-2], self[-1]
         
@@ -107,7 +109,7 @@ def isprime(x):
 
 class StackScript:
 
-    def __init__(self,code,args,stack=Stack()):
+    def __init__(self, code, args, stack=Stack(), line=0, general_code=''):
         self.args = args
         self.stack = stack
         self.code = StackScript.tokenize(code)
@@ -130,7 +132,12 @@ class StackScript:
                 if cmd in 'Bb':
                     cmd += self.code[i+1]
                     cont = 1
-                self.COMMANDS[cmd]()
+                try:
+                    self.COMMANDS[cmd]()
+                except EmptyStackError:
+                    raise EmptyStackError(line, general_code[line-1])
+                except:
+                    raise InvalidSymbolError(line, general_code[line-1], cmd)
 
     @staticmethod
     def tokenize(text):
@@ -176,7 +183,9 @@ class StackScript:
     
     @property
     def COMMANDS(self):
-        return {'+':lambda: self.stack.push(add(self.stack.pop(), self.stack.pop())),
+        return {' ':lambda *a: None,
+
+                '+':lambda: self.stack.push(add(self.stack.pop(), self.stack.pop())),
                 '_':lambda: self.stack.push(subtract(self.stack.pop(), self.stack.pop())),
                 '*':lambda: self.stack.push(multiply(self.stack.pop(), self.stack.pop())),
                 '/':lambda: self.stack.push(divide(self.stack.pop(), self.stack.pop())),
@@ -311,7 +320,8 @@ class StackScript:
 
 class Function:
 
-    def __init__(self,name,args,code,return_flag,text,variable,output):
+    def __init__(self, name, args, code, return_flag, text, variable, output, line,
+                 gen_code):
         self.name = name
         self.args = args
         self.code = code
@@ -320,6 +330,8 @@ class Function:
         self.text = text
         self.variable = variable
         self.out = output
+        self.line = line
+        self.gen = gen_code
 
     def __call__(self,*args):
         if not self.variable:
@@ -327,8 +339,8 @@ class Function:
             while len(args) != self.args:
                 args.append(-1)
         self.stack.push(*args)
-        script = StackScript(self.code,args,self.stack)
-        value = script.run(self.flag,self.text)
+        script = StackScript(self.code, args, self.stack, self.line, self.gen_code)
+        value = script.run(self.flag, self.text)
         if self.out:
             print(value)
         return value
@@ -352,6 +364,7 @@ class Script:
             self.functions = {}
             I = 0
             self.y = 0
+            line = 0
 
         self.x = x
         
@@ -362,9 +375,6 @@ class Script:
                 code.append(f[i])
             else:
                 code.append(f[i][0])
-
-        if code.count(':') > 1:
-            return None
         
         try:
             if code[0] not in 'FIEWD':
@@ -376,6 +386,10 @@ class Script:
                 self.code = code
             
         for cmd in code:
+            
+            if not recur:
+                line += 1
+                
             if type(cmd) == list:
                 if cmd[0] == 'F':
                     for i in range(int(self.x)):
@@ -391,15 +405,15 @@ class Script:
                         self.__init__('\n'.join(cmd),inputs,self.x,recur=True)
                 if cmd[0] == 'D':
                     func_name = cmd[1]
-                    if func_name in 'NPORSFIWD':
-                        raise NameError
                     func_args = cmd[2].count('@')
                     return_flag = '*' in cmd[2]
                     text_flag = '^' in cmd[2]
                     variable = '?' in cmd[2]
                     output = ':' in cmd[2]
                     func_code = ','.join(cmd[3:])
-                    self.functions[func_name] = Function(func_name,func_args,func_code,return_flag,text_flag,variable,output)
+                    self.functions[func_name] = Function(func_name, func_args,
+                                                func_code, return_flag, text_flag,
+                                                variable, output, line, code)
                     
             else:
                 if cmd[:2] == 'x:':
@@ -441,7 +455,10 @@ class Script:
                 elif cmd[0] == '$':
                     self.called = True
                     cmd = cmd.split('>')
-                    func = self.functions[cmd[0][1:]]
+                    try:
+                        func = self.functions[cmd[0][1:]]
+                    except:
+                        raise UnableToRetrieveFunctionError(line, code[line-1], cmd[0][1:])
                     args = []
                     for c in cmd[1:]:
                         if c == '?':
@@ -479,15 +496,18 @@ class Script:
                     else:
                         value = None
 
-                    if value:
+                    if value is not None:
                         if value == '?':
-                            value = inputs[I]
-                            I += 1
+                            try:
+                                value = inputs[I]
+                                I += 1
+                            except:
+                                raise NoMoreInputError(line, code[line-1])
                         if value == 'G':
                             try:
                                 value = self.stored.pop()
                             except:
-                                pass
+                                raise EmptySecondStackError(line, code[line-1])
                         if value == 'g':
                             value = self.stored[-1]
                         if value == 'x':
@@ -496,15 +516,20 @@ class Script:
                             value = self.y
                         try:
                             self.x = self.COMMANDS[symbol](value)
+                        except ZeroDivisionError:
+                            raise DivisionByZeroError(line, code[line-1])
                         except:
-                            continue
+                            raise InvalidSymbolError(line, code[line-1], symbol)
                     else:
                         try:
                             v = self.COMMANDS[symbol]()
                         except:
                             if symbol == '?':
-                                v = inputs[I]
-                                I += 1
+                                try:
+                                    v = inputs[I]
+                                    I += 1
+                                except:
+                                    raise NoMoreInputError(line, code[line-1])
                             else:
                                 v = None
                         if v is None:
@@ -542,7 +567,6 @@ class Script:
                 'H':self._print,
                 'R':self.randint,
                 'S':self.sqrt,
-                'Q':self.quine,
                 'V':self.store,
                 'G':self.get,
 
@@ -625,9 +649,6 @@ class Script:
     
     def sqrt(self):
         return math.sqrt(self.x)
-    
-    def quine(self):
-        print('\n'.join(self.code))
         
     def store(self):
         self.stored.append(self.x)
@@ -646,5 +667,5 @@ if __name__ == '__main__':
             Script(open(program).read(),inputs)
         else:
             Script(program,inputs)
-    except:
-        print('Error encountered!')
+    except Exception as e:
+        print(e)
