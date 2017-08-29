@@ -1,9 +1,9 @@
-import functools, math, operator, random
+import functools, math, operator, random, sys
 
 class EmptyStackError(Exception):
     def __init__(self, num, line):
         
-        self.message = '''EmptyStackError
+        self.message = '''Fatal error: EmptyStackError
     line {}: '{}'
         The stack is empty, and is unable to be popped from'''.format(num, line)
         
@@ -12,7 +12,7 @@ class EmptyStackError(Exception):
 class UnableToRetrieveFunctionError(Exception):
     def __init__(self, num, line, name):
 
-        self.message = '''UnableToRetrieveFunctionError
+        self.message = '''Fatal error: UnableToRetrieveFunctionError
     line {}: '{}'
         Unable to retrieve function {}. {} must be defined before calling'''.format(num, line, name, name)
 
@@ -21,7 +21,7 @@ class UnableToRetrieveFunctionError(Exception):
 class EmptySecondStackError(Exception):
     def __init__(self, num, line):
         
-        self.message = '''EmptySecondStackError
+        self.message = '''Fatal error: EmptySecondStackError
     line {}: '{}'
         The second stack is empty, and is unable to be popped from'''.format(num, line)
 
@@ -30,7 +30,7 @@ class EmptySecondStackError(Exception):
 class NoMoreInputError(Exception):
     def __init__(self, num, line):
         
-        self.message = '''NoMoreInputError
+        self.message = '''Fatal error: NoMoreInputError
     line {}: '{}'
         All input has been used, and cannot be used again'''.format(num, line)
 
@@ -39,7 +39,7 @@ class NoMoreInputError(Exception):
 class InvalidSymbolError(Exception):
     def __init__(self, num, line, char):
         
-        self.message = '''InvalidSymbolError
+        self.message = '''Fatal error: InvalidSymbolError
     line {}: '{}'
         The character {} is an invalid Add++ character'''.format(num, line, char)
 
@@ -48,7 +48,7 @@ class InvalidSymbolError(Exception):
 class DivisionByZeroError(Exception):
     def __init__(self, num, line):
         
-        self.message = '''DivisionByZeroError
+        self.message = '''Fatal error: DivisionByZeroError
     line {}: '{}'
         The laws of mathematics dictate that you are unable to divide by 0'''.format(num, line)
 
@@ -392,7 +392,7 @@ class Function:
             while len(args) != self.args:
                 args.append(-1)
         self.stack.push(*args)
-        script = StackScript(self.code, args, self.stack, self.line, self.gen_code)
+        script = StackScript(self.code, args, self.stack, self.line, self.gen)
         value = script.run(self.flag, self.text)
         if self.out:
             print(value)
@@ -721,4 +721,4 @@ if __name__ == '__main__':
         else:
             Script(program,inputs)
     except Exception as e:
-        print(e)
+        print(e,file=sys.stderr)
