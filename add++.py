@@ -41,7 +41,7 @@ class InvalidSymbolError(Exception):
         
         self.message = '''Fatal error: InvalidSymbolError
     line {}: '{}'
-        The character {} is an invalid Add++ character'''.format(num, line, char)
+        The character '{}' is an invalid Add++ character'''.format(num, line, char)
 
         super(InvalidSymbolError, self).__init__(self.message)
 
@@ -188,9 +188,9 @@ class StackScript:
                 try:
                     self.COMMANDS[cmd]()
                 except EmptyStackError:
-                    raise EmptyStackError(line, general_code[line-1])
+                    raise EmptyStackError(line, ','.join(general_code[line-1]))
                 except:
-                    raise InvalidSymbolError(line, general_code[line-1], cmd)
+                    raise InvalidSymbolError(line, ','.join(general_code[line-1]), cmd)
 
     @staticmethod
     def tokenize(text):
