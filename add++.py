@@ -178,7 +178,7 @@ class StackScript:
             elif isdigit(cmd):
                 self.stack.push(eval_(cmd))
             else:
-                if cmd == 'r':
+                if cmd == 'Q':
                     if self.stack.pop():
                         cont = -1
                     continue
