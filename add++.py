@@ -314,7 +314,7 @@ class StackScript:
                 'b&':lambda: self.stack.push(functools.reduce(operator.and_, self.stack.pop())),
                 'b|':lambda: self.stack.push(functools.reduce(operator.or_, self.stack.pop())),
                 'b^':lambda: self.stack.push(functools.reduce(operator.xor, self.stack.pop())),
-                'b~':lambda: self.stack.push(map(operator.inv, self.stack.pop())),
+                'b~':lambda: self.stack.push(list(map(operator.inv, self.stack.pop()))),
                }
 
     def apply(self, func):
