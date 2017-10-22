@@ -283,7 +283,7 @@ class StackScript:
                 'Bo':lambda: self.stack.push(self.stack.pop() | self.stack.pop()),
                 'Bf':lambda: self.stack.push(~self.stack.pop()),
                 'BB':lambda: self.stack.push(bin(self.stack.pop())[2:]),
-                'Bb':lambda: self.pad_bin(),
+                'Bb':lambda: self.stack.push(int(self.stack.pop(), self.stack.pop())),
                 'Bc':lambda: self.columns(),
                 'B+':lambda: self.apply(lambda l: functools.reduce(operator.add, l)),
                 'B*':lambda: self.apply(lambda l: functools.reduce(operator.mul, l)),
@@ -300,6 +300,7 @@ class StackScript:
                 'Bm':lambda: self.apply(min),
                 'B]':lambda: self.wrap(),
                 'BC':lambda: self.stack.push(int(''.join(map(str, self.stack.pop())), self.stack.pop())),
+                'BR':lambda: self.stack.push(self.stack.pop()[::-1]),
 
                 'bM':lambda: self.stack.push(max(self.stack.pop())),
                 'bm':lambda: self.stack.push(min(self.stack.pop())),
@@ -315,6 +316,7 @@ class StackScript:
                 'b|':lambda: self.stack.push(functools.reduce(operator.or_, self.stack.pop())),
                 'b^':lambda: self.stack.push(functools.reduce(operator.xor, self.stack.pop())),
                 'b~':lambda: self.stack.push(list(map(operator.inv, self.stack.pop()))),
+                'bB':lambda: self.pad_bin(),
                }
 
     def apply(self, func):
