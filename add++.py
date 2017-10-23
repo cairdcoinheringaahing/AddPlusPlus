@@ -1,4 +1,8 @@
-import functools, math, operator, random, sys
+import functools
+import math
+import operator
+import random
+import sys
 
 class EmptyStackError(Exception):
     def __init__(self, num, line):
@@ -159,6 +163,10 @@ def isprime(x):
         if x%i == 0:
             return False
     return True
+
+class Null:
+    def __init__(self, value):
+        self.value = value
 
 class StackScript:
 
@@ -375,8 +383,7 @@ class StackScript:
 
 class Function:
 
-    def __init__(self, name, args, code, return_flag, text, variable, output, line,
-                 gen_code):
+    def __init__(self, name, args, code, return_flag, text, variable, output, line, gen_code):
         self.name = name
         self.args = args
         self.code = code
@@ -398,10 +405,11 @@ class Function:
         value = script.run(self.flag, self.text)
         if self.out:
             print(value)
+            return Null(value)
         return value
         
     def __repr__(self):
-        return 'function {} that takes {} arguments and contains the code {}'.format(self.name,self.args,self.code)
+        return '<Function ${}: {}>'.format(self.name, self.code)
 
 class Script:
 
@@ -533,6 +541,8 @@ class Script:
                         else:
                             args.append(eval_(c))
                     value = func(*args)
+                    if type(value) == Null:
+                        value = value.value
                     if type(value) == list:
                         for v in value:
                             self.stored.append(v)
@@ -592,7 +602,9 @@ class Script:
                         self.x = v
         if not self.called and self.functions:
             func = self.functions[list(self.functions.keys())[0]]
-            func()
+            result = func()
+            if type(result) != Null:
+                print(result)
 
     def __call__(self,*values):
         return None
