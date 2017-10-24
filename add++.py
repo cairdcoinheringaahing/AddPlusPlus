@@ -602,7 +602,10 @@ class Script:
                         self.x = v
         if not self.called and self.functions:
             func = self.functions[list(self.functions.keys())[0]]
-            result = func()
+            if I < len(inputs):
+                result = func(*inputs[I:])
+            else:
+                result = func()
             if type(result) != Null:
                 print(result)
 
