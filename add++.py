@@ -275,6 +275,7 @@ class StackScript:
                 'F':lambda: self.stack.push(*self.factors()),
                 'f':lambda: self.stack.push(*filter(isprime, self.factors())),
                 'A':lambda: self.stack.push(*self.args),
+                'a':lambda: self.stack.push(list(self.args)),
                 'N':lambda: self.stack.push('\n'.join(map(str, self.stack))),
                 'O':lambda: self.stack.push(ord(self.stack.pop())),
                 'C':lambda: self.stack.push(chr(self.stack.pop())),
