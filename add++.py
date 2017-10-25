@@ -305,6 +305,8 @@ class StackScript:
                 'n':lambda: self.join(),
                 'R':lambda: self.stack.push(list(range(1, self.stack.pop()+1))),
                 'r':lambda: self.stack.push(list(range(self.stack.pop(), self.stack.pop()))),
+                'J':lambda: self.join(''),
+                'j':lambda: self.join(str(self.stack.pop())),
                 
                 'E#':lambda: Stack([sorted(i) for i in self.stack]),
                 'E@':lambda: Stack([i[::-1] for i in self.stack]),
@@ -372,9 +374,9 @@ class StackScript:
         incs = [args[i] == args[i-1] for i in range(1, len(args))]
         return all(incs)
         
-    def join(self):
+    def join(self, char='\n'):
         newstack = Stack()
-        newstack.push('\n'.join(map(str, self.stack)))
+        newstack.push(char.join(map(str, self.stack)))
         self.stack = newstack
     
     def factors(self):
