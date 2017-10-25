@@ -70,12 +70,18 @@ def eval_(string):
         return string
 
 class Stack(list):
-    def push(self,*values):
+    def push(self, *values, flat=False):
         for v in values:
-            try:
-                self.append(v.replace("'",'"'))
-            except:
-                self.append(v)
+            if flat:
+                if type(v) == list:
+                    self.push(*v)
+                 else:
+                    self.push(v)
+            else:
+                try:
+                    self.append(v.replace("'",'"'))
+                except:
+                    self.append(v)
     def pop(self,index=-1):
         try:
             return super().pop(index)
@@ -194,11 +200,16 @@ class StackScript:
                     cmd += self.code[i+1]
                     cont = 1
                 try:
-                    self.COMMANDS[cmd]()
+                    result = self.COMMANDS[cmd]()
                 except EmptyStackError:
                     raise EmptyStackError(line, ','.join(general_code[line-1]))
-                except:
+                except KeyError:
                     raise InvalidSymbolError(line, ','.join(general_code[line-1]), cmd)
+                except Exception as error:
+                    raise error(line, ','.join(general_code[line-1]))
+                if type(result) == Stack:
+                    self.stack = result
+                    del result
 
     @staticmethod
     def tokenize(text):
@@ -286,6 +297,17 @@ class StackScript:
                 'n':lambda: self.join(),
                 'R':lambda: self.stack.push(list(range(1, self.stack.pop()+1))),
                 'r':lambda: self.stack.push(list(range(self.stack.pop(), self.stack.pop()))),
+                
+                'E#':lambda: Stack([sorted(i) for i in self.stack]),
+                'E@':lambda: Stack([i[::-1] for i in self.stack]),
+                'ER':lambda: Stack([list(range(1, i+1)) for i in self.stack]),
+                'EC':lambda: self.collect()
+                'ED':lambda: Stack([[int(i) for i in list(str(j))] for j in self.stack]),
+                'Ed':lambda: Stack([int(''.join(i)) for i in self.stack]),
+                'Ep':lambda: Stack([i[:-1] for i in self.stack]),
+                'EP':lambda: Stack([i[1:] for i in self.stack]),
+                'EL':lambda: Stack([len(i) for i in self.stack]),
+                'Es':lambda: Stack([sum(i) for i in self.stack]),
 
                 'Bx':lambda: self.stack.push(self.stack.pop() ^ self.stack.pop()),
                 'Ba':lambda: self.stack.push(self.stack.pop() & self.stack.pop()),
@@ -304,12 +326,15 @@ class StackScript:
                 'B&':lambda: self.apply(lambda l: functools.reduce(operator.and_, l)),
                 'B|':lambda: self.apply(lambda l: functools.reduce(operator.or_, l)),
                 'B^':lambda: self.apply(lambda l: functools.reduce(operator.xor, l)),
+                'B=':lambda: self.apply(lambda l: functools.reduce(operator.eq, l)),
+                'B!':lambda: self.apply(operator.not_)
                 'B~':lambda: self.apply(operator.inv),
                 'BM':lambda: self.apply(max),
                 'Bm':lambda: self.apply(min),
                 'B]':lambda: self.wrap(),
                 'BC':lambda: self.stack.push(int(''.join(map(str, self.stack.pop())), self.stack.pop())),
                 'BR':lambda: self.stack.push(self.stack.pop()[::-1]),
+                'BF':lambda: self.flatten()
 
                 'bM':lambda: self.stack.push(max(self.stack.pop())),
                 'bm':lambda: self.stack.push(min(self.stack.pop())),
@@ -324,8 +349,11 @@ class StackScript:
                 'b&':lambda: self.stack.push(functools.reduce(operator.and_, self.stack.pop())),
                 'b|':lambda: self.stack.push(functools.reduce(operator.or_, self.stack.pop())),
                 'b^':lambda: self.stack.push(functools.reduce(operator.xor, self.stack.pop())),
+                'b=':lambda: self.stack.push(functools.reduce(operator.eq, self.stack.pop())),
+                'b!':lambda: self.stack.push(list(map(operator.not_, self.stack.pop()))),
                 'b~':lambda: self.stack.push(list(map(operator.inv, self.stack.pop()))),
                 'bB':lambda: self.pad_bin(),
+                'bF':lambda: self.stack.push(*self.stack.pop())
                }
 
     def apply(self, func):
@@ -352,6 +380,26 @@ class StackScript:
             if s not in final:
                 final.append(s)
         return final
+    
+    def collect(self):
+        array = []
+        sub_array = []
+        for element in self.stack:
+            if type(element) == list:
+                if sub_array:
+                    array.append(sub_array)
+                    sub_array = []
+                array.append(element)
+            else:
+                sub_array.append(element)
+        if sub_array:
+            array.append(sub_array)
+        self.stack = Stack(array)
+        
+    def flatten(self):
+        new = Stack()
+        new.push(*self.stack, flat=True)
+        self.stack = new
 
     @staticmethod
     def stringify(value):
