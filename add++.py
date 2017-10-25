@@ -63,7 +63,7 @@ class PythonError(Exception):
 
         self.message = '''Fatal error: PythonError
     line {}: '{}'
-        Python error raised: '{}' '''.format(num, line, error)
+        Python error raised: {}'''.format(num, line, error)
 
         super(PythonError, self).__init__(self.message)
 
@@ -369,8 +369,8 @@ class StackScript:
         self.stack = Stack(map(func, self.stack))
         
     def eq(self, *args):
-        incs = [args[i] - args[i-1] for i in range(1, len(args)+1)]
-        return sum(incs) == functools.reduce(operator.mul, incs) == 0
+        incs = [args[i] == args[i-1] for i in range(1, len(args))]
+        return all(incs)
         
     def join(self):
         newstack = Stack()
