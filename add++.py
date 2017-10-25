@@ -334,7 +334,7 @@ class StackScript:
                 'B&':lambda: self.apply(lambda l: functools.reduce(operator.and_, l)),
                 'B|':lambda: self.apply(lambda l: functools.reduce(operator.or_, l)),
                 'B^':lambda: self.apply(lambda l: functools.reduce(operator.xor, l)),
-                'B=':lambda: self.apply(lambda l: functools.reduce(operator.eq, l)),
+                'B=':lambda: self.apply(lambda l: self.eq(*l)),
                 'B!':lambda: self.apply(operator.not_),
                 'B~':lambda: self.apply(operator.inv),
                 'BM':lambda: self.apply(max),
@@ -357,7 +357,7 @@ class StackScript:
                 'b&':lambda: self.stack.push(functools.reduce(operator.and_, self.stack.pop())),
                 'b|':lambda: self.stack.push(functools.reduce(operator.or_, self.stack.pop())),
                 'b^':lambda: self.stack.push(functools.reduce(operator.xor, self.stack.pop())),
-                'b=':lambda: self.stack.push(functools.reduce(operator.eq, self.stack.pop())),
+                'b=':lambda: self.stack.push(self.eq(*self.stack.pop())),
                 'b!':lambda: self.stack.push(list(map(operator.not_, self.stack.pop()))),
                 'b~':lambda: self.stack.push(list(map(operator.inv, self.stack.pop()))),
                 'bB':lambda: self.pad_bin(),
@@ -367,6 +367,10 @@ class StackScript:
 
     def apply(self, func):
         self.stack = Stack(map(func, self.stack))
+        
+    def eq(self, *args):
+        incs = [args[i] - args[i-1] for i in range(1, len(args)+1)]
+        return sum(incs) == functools.reduce(operator.mul, incs) == 0
         
     def join(self):
         newstack = Stack()
