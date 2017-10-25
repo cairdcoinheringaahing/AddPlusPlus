@@ -616,6 +616,9 @@ class Script:
                             args.append(self.stored.pop())
                         elif c == 'g':
                             args.append(self.stored[-1])
+                        elif c == '_':
+                            for element in self.stored:
+                                args.append(element)
                         else:
                             args.append(eval_(c))
                             
