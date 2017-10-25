@@ -458,27 +458,26 @@ class StackScript:
 
 class Function:
 
-    def __init__(self, name, args, code, return_flag, text, variable, output, line, gen_code):
+    def __init__(self, name, args, code, line, g_code, *flags):
         self.name = name
         self.args = args
         self.code = code
         self.stack = Stack()
-        self.flag = return_flag
-        self.text = text
-        self.variable = variable
-        self.out = output
+        self.flags = list(flags)
         self.line = line
         self.gen = gen_code
 
     def __call__(self,*args):
-        if not self.variable:
+        if not self.flags[2]:
             args = list(args)[:self.args]
             while len(args) != self.args:
                 args.append(-1)
+                
         self.stack.push(*args)
         script = StackScript(self.code, args, self.stack, self.line, self.gen)
-        value = script.run(self.flag, self.text)
-        if self.out:
+        value = script.run(*self.flags[:2])
+        
+        if self.flags[3]:
             print(value)
             return Null(value)
         return value
@@ -497,6 +496,7 @@ class Script:
             
         if not recur:
             self.called = False
+            self.implicit = False
             self.stored = []
             self.string = ''
             self.functions = {}
@@ -544,16 +544,14 @@ class Script:
                 if cmd[0] == 'D':
                     func_name = cmd[1]
                     func_args = cmd[2].count('@')
-                    return_flag = '*' in cmd[2]
-                    text_flag = '^' in cmd[2]
-                    variable = '?' in cmd[2]
-                    output = ':' in cmd[2]
+                    func_flags = []
+                    for flag in '*^?:':
+                        func_flags.append(flag in cmd[2])
                     func_code = ','.join(cmd[3:])+' '
-                    self.functions[func_name] = Function(func_name, func_args,
-                                                func_code, return_flag, text_flag,
-                                                variable, output, line, code)
+                    self.functions[func_name] = Function(func_name, func_args, func_code, line, code, *func_flags)
                     
             else:
+                self.implicit = True
                 if cmd[:2] == 'x:':
                     c = cmd[2:]
                     if c == '?':
@@ -572,6 +570,7 @@ class Script:
                         self.x = self.stored[-1]
                     else:
                         self.x = eval_(c)
+                        
                 elif cmd[:2] == 'y:':
                     c = cmd[2:]
                     if c == '?':
@@ -590,6 +589,7 @@ class Script:
                         self.y = self.stored[-1]
                     else:
                         self.y = eval_(c)
+                        
                 elif cmd[0] == '$':
                     self.called = True
                     cmd = cmd.split('>')
@@ -615,6 +615,7 @@ class Script:
                             args.append(self.stored[-1])
                         else:
                             args.append(eval_(c))
+                            
                     value = func(*args)
                     if type(value) == Null:
                         value = value.value
@@ -625,6 +626,7 @@ class Script:
                         self.stored.append(value)
                     self.x = value
                 else:
+                    
                     symbol = cmd[0]
                     if symbol == "_":
                         for i in inputs:
@@ -682,10 +684,10 @@ class Script:
                 result = func(*inputs[I:])
             else:
                 result = func()
-            if type(result) != Null:
+            if type(result) != Null and not self.implicit:
                 print(result)
 
-    def __call__(self,*values):
+    def __call__(self, *values):
         return None
 
     @property
