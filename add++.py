@@ -3,6 +3,7 @@ import inspect
 import math
 import operator
 import random
+import re
 import sys
 
 import error
@@ -37,83 +38,28 @@ class Stack(list):
         self[-1], self[-2] = self[-2], self[-1]
         
 def add(x,y):
-    if type(x) == str and type(y) == int:
-        return ''.join(map(lambda c: chr(ord(c)+y), x))
-    if type(x) == int and type(y) == str:
-        return ''.join(map(lambda c: chr(ord(c)+x), y))
-    return x + y
+    return y + x
 
 def subtract(x,y):
-    if type(x) == str and type(y) == str:
-        for char in y:
-            x = x.replace(char, "")
-        return x
-    if type(x) == str and type(y) == int:
-        return ''.join(map(lambda c: chr(ord(c)-y), x))
-    if type(x) == int and type(y) == str:
-        return ''.join(map(lambda c: chr(ord(c)-x), y))
-    return x - y
+    return y - x
 
 def multiply(x,y):
-    if type(x) == str and type(y) == str:
-        final = ""
-        for a,b in zip(x,y):
-            final += chr(ord(a)+ord(b))
-        return final
-    if type(x) == str and type(y) == int:
-        return ''.join(map(lambda c: c*y, x))
-    if type(x) == int and type(y) == str:
-        return x * y
-    return x * y
+    return y * x
 
 def divide(x,y):
-    if type(x) == str and type(y) == str:
-            final = ""
-            for a,b in zip(x,y):
-                final += chr(max(ord(a),ord(b))-min(ord(a),ord(b)))
-            return final
-    if type(x) == str and type(y) == int:
-        return ''.join(map(lambda c: chr(ord(c)//y), x))
-    if type(x) == int and type(y) == str:
-        return ''.join(map(lambda c: chr(ord(c)//x), y))
-    return x / y
+    return y / x
 
 def exponent(x,y):
-    if type(x) == str and type(y) == str:
-        final = ""
-        for a,b in zip(x,y):
-            final += [a,b][b>a]
-        return final
-    if type(x) == int and type(y) == int:
-        return x ** y
-    c = x if type(x) == int else y
-    d = y if c == x else x
-    final = d
-    for i in range(c-1):
-        final = multiply(final,d)
-    return final
+    return y *8 x
 
 def modulo(x,y):
-    if type(x) == str and type(y) == str:
-        return x % y
-    if type(x) == str and type(y) == int:
-        return ''.join(map(lambda c: chr(ord(c)%y), x))
-    if type(x) == int and type(y) == str:
-        return ''.join(map(lambda c: chr(ord(c)%x), y))
-    return x%y
-
-def absolute(x):
-    if type(x) == str:
-        return x
-    return abs(x)
+    return y % x
 
 def isprime(x):
-    if type(x) == str:
-        return False
     for i in range(2,x):
         if x%i == 0:
             return False
-    return True
+    return x > 1 and isinstance(x, int)
 
 class Null:
     def __init__(self, value):
@@ -214,7 +160,7 @@ class StackScript:
                 '!':lambda: self.stack.push(not self.stack.pop()),
                 '#':lambda: self.stack.sort(),
                 ';':lambda: self.stack.push(self.stack.pop() * 2),
-                '|':lambda: self.stack.push(absolute(self.stack.pop())),
+                '|':lambda: self.stack.push(abs(self.stack.pop())),
                 '<':lambda: self.stack.push(self.stack.pop() < self.stack.pop()),
                 '>':lambda: self.stack.push(self.stack.pop() > self.stack.pop()),
                 '?':lambda: self.stack.push(bool(self.stack.pop())),
@@ -485,6 +431,16 @@ class Script:
                         func_flags.append(flag in cmd[2])
                     func_code = ','.join(cmd[3:])+' '
                     self.functions[func_name] = Function(func_name, func_args, func_code, line, code, *func_flags)
+                if cmd[0] == 'L':
+                    cmd = cmd.split(',')
+                    flags = cmd[0][1:]
+                    lambda_c = ','.join(cmd[1:])
+                    lambda_n = len(list(filter(lambda a:bool(re.search(r'^lambda \d+$', a)), self.functions.keys()))) + 1
+                    name = 'lambda {}'.format(lambda_n)
+                    lambda_f = []
+                    for flag in '*^?:!':
+                        lambda_f.append(flag == '?' or flag in flags)
+                    self.functions[name] = Function(name, 0, lambda_c, line, code, *func_flags)
                     
             else:
                 self.implicit = True
