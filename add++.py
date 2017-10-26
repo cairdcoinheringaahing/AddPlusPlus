@@ -50,7 +50,7 @@ def divide(x,y):
     return y / x
 
 def exponent(x,y):
-    return y *8 x
+    return y * x
 
 def modulo(x,y):
     return y % x
@@ -540,7 +540,7 @@ class Script:
                     try: v = inputs[I]; I += 1
                     except: raise error.NoMoreInputError(line, code[line-1])
                 else: v = None
-            if v is None: continue
+            if v is None: return
             self.x = v
 
     def __call__(self, *values):
