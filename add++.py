@@ -4,70 +4,9 @@ import operator
 import random
 import sys
 
-class EmptyStackError(Exception):
-    def __init__(self, num, line):
-        
-        self.message = '''Fatal error: EmptyStackError
-    line {}: '{}'
-        The stack is empty, and is unable to be popped from'''.format(num, line)
-        
-        super(EmptyStackError, self).__init__(self.message)
+import error
 
-class UnableToRetrieveFunctionError(Exception):
-    def __init__(self, num, line, name):
-
-        self.message = '''Fatal error: UnableToRetrieveFunctionError
-    line {}: '{}'
-        Unable to retrieve function {}. {} must be defined before calling'''.format(num, line, name, name)
-
-        super(UnableToRetrieveFunctionError, self).__init__(self.message)
-
-class EmptySecondStackError(Exception):
-    def __init__(self, num, line):
-        
-        self.message = '''Fatal error: EmptySecondStackError
-    line {}: '{}'
-        The second stack is empty, and is unable to be popped from'''.format(num, line)
-
-        super(EmptySecondStackError, self).__init__(self.message)
-
-class NoMoreInputError(Exception):
-    def __init__(self, num, line):
-        
-        self.message = '''Fatal error: NoMoreInputError
-    line {}: '{}'
-        All input has been used, and cannot be used again'''.format(num, line)
-
-        super(NoMoreInputError, self).__init__(self.message)
-
-class InvalidSymbolError(Exception):
-    def __init__(self, num, line, char):
-        
-        self.message = '''Fatal error: InvalidSymbolError
-    line {}: '{}'
-        The character '{}' is an invalid Add++ character'''.format(num, line, char)
-
-        super(InvalidSymbolError, self).__init__(self.message)
-
-class DivisionByZeroError(Exception):
-    def __init__(self, num, line):
-        
-        self.message = '''Fatal error: DivisionByZeroError
-    line {}: '{}'
-        The laws of mathematics dictate that you are unable to divide by 0'''.format(num, line)
-
-        super(DivisionByZeroError, self).__init__(self.message)
-
-class PythonError(Exception):
-    def __init__(self, num, line, error):
-
-        self.message = '''Fatal error: PythonError
-    line {}: '{}'
-        Python error raised: {}'''.format(num, line, error)
-
-        super(PythonError, self).__init__(self.message)
-
-CUSTOM_ERRORS = [EmptyStackError, UnableToRetrieveFunctionError, EmptySecondStackError, NoMoreInputError, InvalidSymbolError, DivisionByZeroError]
+CUSTOM_ERRORS = [m[0] for m in inspect.getmembers(error, inspect.isclass) if m[1].__module__ == 'error']
 
 def isdigit(string):
     return all(i in '1234567890-.' for i in string)
@@ -91,7 +30,7 @@ class Stack(list):
         try:
             return super().pop(index)
         except:
-            raise EmptyStackError()
+            raise error.EmptyStackError()
     
     def swap(self):
         self[-1], self[-2] = self[-2], self[-1]
@@ -206,22 +145,21 @@ class StackScript:
                     cont = 1
                 try:
                     result = self.COMMANDS[cmd]()
-                except EmptyStackError:
-                    raise EmptyStackError(line, ','.join(general_code[line-1]))
+                except error.EmptyStackError:
+                    raise error.EmptyStackError(line, ','.join(general_code[line-1]))
                 except KeyError:
-                    raise InvalidSymbolError(line, ','.join(general_code[line-1]), cmd)
-                except Exception as error:
+                    raise error.InvalidSymbolError(line, ','.join(general_code[line-1]), cmd)
+                except Exception as n_error:
                     try:
-                        raise error(line, ','.join(general_code[line-1]))
+                        raise n_error(line, ','.join(general_code[line-1]))
                     except Exception as e:
-                        raise PythonError(line, ','.join(general_code[line-1]), e)
+                        raise error.PythonError(line, ','.join(general_code[line-1]), e)
                 if type(result) == Stack:
                     self.stack = result
                     del result
 
     @staticmethod
     def tokenize(text):
-        
         final = []
         temp = ''
         num = ''
@@ -490,61 +428,55 @@ class Function:
 
 class Script:
 
-    def __init__(self,code,inputs=(),x=0,recur=False):
+    def __init__(self,code, inputs=()):
 
         self.NILADS = r'!~&#@NPOHSQVG'
         self.MONADS = r'+-*/\^><%=R'
+        self.CONSTRUCTS = r'FWEID'
         
-        code = list(map(lambda x: x.split(','), filter(None, code.split('\n'))))
+        code = list(filter(None, code.split('\n')))
             
-        if not recur:
-            self.called = False
-            self.implicit = False
-            self.stored = []
-            self.string = ''
-            self.functions = {}
-            I = 0
-            self.y = 0
-            line = 0
-
-        self.x = x
-        
-        f = code[:]
-        code.clear()
-        for i in range(len(f)):
-            if len(f[i]) > 1:
-                code.append(f[i])
-            else:
-                code.append(f[i][0])
-        
-        try:
-            if code[0] not in 'FIEWD':
-                self.x = x
-                self.code = code
-        except:
-            if code[0][0] not in 'FEIWD':
-                self.x = x
-                self.code = code
+        self.called = False
+        self.implicit = False
+        self.stored = []
+        self.string = ''
+        self.functions = {}
+        self.y = 0
+        self.x = 0
+        line = 0
+        I = 0
             
         for cmd in code:
-            
-            if not recur:
-                line += 1
+            line += 1
                 
-            if type(cmd) == list:
+            if cmd[0] in self.CONSTRUCTS:
                 if cmd[0] == 'F':
-                    for i in range(int(self.x)):
-                        self.__init__('\n'.join(cmd),inputs,recur=True)
-                if cmd[0] == 'E':
-                    for i in range(int(self.x)):
-                        self.__init__('\n'.join(cmd),inputs,i,recur=True)
+                    loop = cmd[1:].split(',')
+                    for _ in range(self.x):
+                        for line in loop:
+                            self.run_chunk(line)
+                if cmd[:2] == 'EX':
+                    loop = cmd[2:].split(',')
+                    for element in self.stored:
+                        for line in loop:
+                            self.run_chunk(line, x=element)
+                if cmd[:2] == 'EY':
+                    loop = cmd[1:].split(',')
+                    for element in self.stored:
+                        for line in loop:
+                            self.run_chunk(line, y=element)
                 if cmd[0] == 'I':
+                    loop = cmd[1:].split(',')
                     if self.x:
-                        self.__init__('\n'.join(cmd),inputs,recur=True)
+                        for line in loop:
+                            self.run_chunk(line)
                 if cmd[0] == 'W':
+                    loop = cmd[1:].split(',')
                     while self.x:
-                        self.__init__('\n'.join(cmd),inputs,self.x,recur=True)
+                        for line in loop:
+                            self.run_chunk(line)
                 if cmd[0] == 'D':
+                    cmd = cmd.split(',')
                     func_name = cmd[1]
                     func_args = cmd[2].count('@')
                     func_flags = []
@@ -555,143 +487,104 @@ class Script:
                     
             else:
                 self.implicit = True
-                if cmd[:2] == 'x:':
-                    c = cmd[2:]
-                    if c == '?':
-                        try:
-                            self.x = inputs[I]
-                            I += 1
-                        except:
-                            self.x = 0
-                    elif c == 'x':
-                        self.x = self.x
-                    elif c == 'y':
-                        self.x = self.y
-                    elif c == 'G':
-                        self.x = self.stored.pop()
-                    elif c == 'g':
-                        self.x = self.stored[-1]
-                    else:
-                        self.x = eval_(c)
+                if cmd[:2] in ['x:', 'y:']:
+                    if cmd[0] == 'x': acc = self.x; acc_n = 'x'
+                    else: acc = self.y; acc_n = 'y'
                         
-                elif cmd[:2] == 'y:':
                     c = cmd[2:]
                     if c == '?':
-                        try:
-                            self.y = inputs[I]
-                            I += 1
-                        except:
-                            self.y = 0
-                    elif c == 'x':
-                        self.y = self.x
-                    elif c == 'y':
-                        self.y = self.y
+                        try: acc = inputs[I]; I += 1
+                        except: acc = 0
+                    elif c == 'x': acc = self.x
+                    elif c == 'y': acc = self.y
                     elif c == 'G':
-                        self.y = self.stored.pop()
-                    elif c == 'g':
-                        self.y = self.stored[-1]
-                    else:
-                        self.y = eval_(c)
+                        try: acc = self.stored.pop()
+                        except: raise error.EmptySecondStackError(line, code[line-1])
+                    elif c == 'g': acc = self.stored[-1]
+                    else: acc = eval_(c)
+                        
+                    if acc_n == 'x': self.x = acc
+                    if acc_n == 'y': self.y = acc
                         
                 elif cmd[0] == '$':
                     self.called = True
                     cmd = cmd.split('>')
-                    try:
-                        func = self.functions[cmd[0][1:]]
-                    except:
-                        raise UnableToRetrieveFunctionError(line, code[line-1], cmd[0][1:])
+                    try: func = self.functions[cmd[0][1:]]
+                    except: raise error.UnableToRetrieveFunctionError(line, code[line-1], cmd[0][1:])
                     args = []
                     for c in cmd[1:]:
                         if c == '?':
-                            try:
-                                args.append(inputs[I])
-                                I += 1
-                            except:
-                                args.append(0)
-                        elif c == 'x':
-                            args.append(self.x)
-                        elif c == 'y':
-                            args.append(self.y)
+                            try: args.append(inputs[I]); I += 1
+                            except: args.append(0)
+                        elif c == 'x': args.append(self.x)
+                        elif c == 'y': args.append(self.y)
                         elif c == 'G':
-                            args.append(self.stored.pop())
-                        elif c == 'g':
-                            args.append(self.stored[-1])
+                            try: args.append(self.stored.pop())
+                            except: raise error.EmptySecondStackError(line, code[line-1])
+                        elif c == 'g': args.append(self.stored[-1])
                         elif c == '_':
                             for element in self.stored:
                                 args.append(element)
-                        else:
-                            args.append(eval_(c))
+                        else: args.append(eval_(c))
                             
                     value = func(*args)
-                    if type(value) == Null:
-                        value = value.value
+                    if type(value) == Null: value = value.value
+                    if type(value) == str: self.stored.append(value)
                     if type(value) == list:
                         for v in value:
                             self.stored.append(v)
-                    if type(value) == str:
-                        self.stored.append(value)
                     self.x = value
-                else:
                     
-                    symbol = cmd[0]
-                    if symbol == "_":
-                        for i in inputs:
-                            self.stored.append(i)
-                    if symbol == '}':
-                        self.x, self.y = self.y, self.x
-                    if len(cmd) > 1:
-                        value = eval_(cmd[1:])
-                    else:
-                        value = None
-
-                    if value is not None:
-                        if value == '?':
-                            try:
-                                value = inputs[I]
-                                I += 1
-                            except:
-                                raise NoMoreInputError(line, code[line-1])
-                        if value == 'G':
-                            try:
-                                value = self.stored.pop()
-                            except:
-                                raise EmptySecondStackError(line, code[line-1])
-                        if value == 'g':
-                            value = self.stored[-1]
-                        if value == 'x':
-                            value = self.x
-                        if value == 'y':
-                            value = self.y
-                        try:
-                            self.x = self.COMMANDS[symbol](value)
-                        except ZeroDivisionError:
-                            raise DivisionByZeroError(line, code[line-1])
-                        except:
-                            raise InvalidSymbolError(line, code[line-1], symbol)
-                    else:
-                        try:
-                            v = self.COMMANDS[symbol]()
-                        except:
-                            if symbol == '?':
-                                try:
-                                    v = inputs[I]
-                                    I += 1
-                                except:
-                                    raise NoMoreInputError(line, code[line-1])
-                            else:
-                                v = None
-                        if v is None:
-                            continue
-                        self.x = v
-
+                else:
+                    self.run_chunk(cmd)
+                    
         if not self.called and self.functions:
             func = self.functions[list(self.functions.keys())[0]]
-            if I < len(inputs):
-                result = func(*inputs[I:])
-            else:
-                result = func()
+            if I < len(inputs): result = func(*inputs[I:])
+            elif self.x:
+                if self.y: result = func(self.x, self.y)
+                else: result = func(self.x)
+            else: result = func()
             if type(result) != Null and not self.implicit:
                 print(result)
+                
+    def run_chunk(self, cmd, x=None, y=None):
+        if x is not None: self.x = x
+        if y is not None: self.y = y
+            
+        symbol = cmd[0]
+        if symbol == "_":
+            for i in inputs:
+                self.stored.append(i)
+        if symbol == '}': self.x, self.y = self.y, self.x
+            
+        if len(cmd) > 1: value = eval_(cmd[1:])
+        else: value = None
+
+        if value is not None:
+            if value == '?':
+                try: value = inputs[I];  I += 1
+                except: raise error.NoMoreInputError(line, code[line-1])
+            if value == 'G':
+                try: value = self.stored.pop()
+                except: raise error.EmptySecondStackError(line, code[line-1])
+            if value == 'g': value = self.stored[-1]
+            if value == 'x': value = self.x
+            if value == 'y': value = self.y
+                
+            try: self.x = self.COMMANDS[symbol](value)
+            except ZeroDivisionError: raise error.DivisionByZeroError(line, code[line-1])
+            except: raise error.InvalidSymbolError(line, code[line-1], symbol)
+                
+        else:
+            try: v = self.COMMANDS[symbol]()
+            except:
+                if symbol == '?':
+                    try: v = inputs[I]; I += 1
+                    except: raise error.NoMoreInputError(line, code[line-1])
+                else: v = None
+            if v is None: continue
+            self.x = v
 
     def __call__(self, *values):
         return None
@@ -730,85 +623,39 @@ class Script:
                 'E':self,
                 'D':self}
 
-    def add(self,y):
-        return self.x + y
-
-    def minus(self,y):
-        return self.x - y
-
-    def times(self,y):
-        return self.x * y
-
-    def divide(self,y):
-        return self.x / y
-    
-    def int_divide(self,y):
-        return int(self.x / y)
-
-    def power(self,y):
-        return self.x ** y
-
-    def greater(self,y):
-        return int(self.x > y)
-
-    def less(self,y):
-        return int(self.x < y)
-    
-    def factorial(self):
-        return math.factorial(self.x)
-
-    def modulo(self,y):
-        return self.x % y
-
-    def negative(self):
-        return -self.x
-
-    def equal(self,y):
-        return int(self.x == y)
-
-    def next(self):
-        self.string += chr(self.x)
-
-    def double(self):
-        return self.x * 2
-
-    def half(self):
-        return self.x / 2
-
-    def notequals(self,y):
-        return int(self.x != y)
-
-    def not_(self):
-        return int(not self.x)
-
-    def print(self):
-        if self.string:
-            print(self.string)
-        else:
-            print(chr(self.x))
-
-    def print_(self):
-        print(self.x)
+    def add(self, y):        return self.x + y
+    def minus(self, y):      return self.x - y
+    def times(self, y):      return self.x * y
+    def divide(self, y):     return self.x / y
+    def int_divide(self, y): return int(self.x / y)
+    def power(self, y):      return self.x ** y
+    def greater(self, y):    return int(self.x > y)
+    def less(self, y):       return int(self.x < y)
+    def factorial(self):     return math.factorial(self.x)
+    def modulo(self, y):     return self.x % y
+    def negative(self):      return -self.x
+    def equal(self, y):      return int(self.x == y)
+    def next(self):          self.string += chr(self.x)
+    def double(self):        return self.x * 2
+    def half(self):          return self.x / 2
+    def notequals(self, y):  return int(self.x != y)
+    def not_(self):          return int(not self.x)
+    def print_(self):        print(self.x)
+    def sqrt(self):          return math.sqrt(self.x)
+    def store(self):         self.stored.append(self.x)
+    def get(self):           self.x = self.stored.pop()
         
     def _print(self):
-        if self.string:
-            print(end=self.string)
-        else:
-            print(end=chr(self.x))
-
+        if self.string: print(end=self.string)
+        else: print(end=chr(self.x))
+            
+    def print(self):
+        if self.string: print(self.string)
+        else: print(chr(self.x))
+            
     def randint(self,y=0):
-        if y > self.x:
-            return random.randint(self.x, y)
+        if y > self.x: return random.randint(self.x, y)
         return random.randint(y, self.x)
-    
-    def sqrt(self):
-        return math.sqrt(self.x)
-        
-    def store(self):
-        self.stored.append(self.x)
-        
-    def get(self):
-        self.x = self.stored.pop()
 
 if __name__ == '__main__':
 
