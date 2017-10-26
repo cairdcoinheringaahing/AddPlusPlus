@@ -467,13 +467,16 @@ class Function:
         self.line = line
         self.gen = gen_code
 
-    def __call__(self,*args):
+    def __call__(self, *args):
         if not self.flags[2]:
             args = list(args)[:self.args]
             while len(args) != self.args:
                 args.append(-1)
                 
-        self.stack.push(*args)
+        if self.flags[4]:
+            self.stack.push(args)
+        else:
+            self.stack.push(*args)
         script = StackScript(self.code, args, self.stack, self.line, self.gen)
         value = script.run(*self.flags[:2])
         
@@ -545,7 +548,7 @@ class Script:
                     func_name = cmd[1]
                     func_args = cmd[2].count('@')
                     func_flags = []
-                    for flag in '*^?:':
+                    for flag in '*^?:!':
                         func_flags.append(flag in cmd[2])
                     func_code = ','.join(cmd[3:])+' '
                     self.functions[func_name] = Function(func_name, func_args, func_code, line, code, *func_flags)
@@ -613,6 +616,9 @@ class Script:
                             args.append(self.stored.pop())
                         elif c == 'g':
                             args.append(self.stored[-1])
+                        elif c == '_':
+                            for element in self.stored:
+                                args.append(element)
                         else:
                             args.append(eval_(c))
                             
