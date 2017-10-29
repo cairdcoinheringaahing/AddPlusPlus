@@ -474,7 +474,7 @@ class Function:
                 args.append(-1)
                 
         if self.flags[4]:
-            self.stack.push(args)
+            self.stack.push(list(args))
         else:
             self.stack.push(*args)
         script = StackScript(self.code, args, self.stack, self.line, self.gen)
