@@ -183,7 +183,7 @@ class StackScript:
 
     def __init__(self, code, args, stack=Stack(), line=0, general_code=''):
         self.args = args
-        self.register = args[0]
+        self.register = args[0] if args else 0
         self.stack = stack
         self.code = StackScript.tokenize(code)
         if self.code[-1] in 'BEb':
