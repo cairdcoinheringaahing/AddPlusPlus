@@ -183,6 +183,7 @@ class StackScript:
 
     def __init__(self, code, args, stack=Stack(), line=0, general_code=''):
         self.args = args
+        self.register = args[0]
         self.stack = stack
         self.code = StackScript.tokenize(code)
         if self.code[-1] in 'BEb':
@@ -307,6 +308,8 @@ class StackScript:
                 'r':lambda: self.stack.push(list(range(self.stack.pop(), self.stack.pop()))),
                 'J':lambda: self.join(''),
                 'j':lambda: self.join(str(self.stack.pop())),
+                'V':lambda: self.store(self.stack.pop()),
+                'G':lambda: self.stack.push(self.register),
                 
                 'E#':lambda: Stack([sorted(i) for i in self.stack]),
                 'E@':lambda: Stack([i[::-1] for i in self.stack]),
@@ -455,6 +458,9 @@ class StackScript:
         array = self.stack.copy()
         self.stack.clear()
         self.stack.push(array)
+
+    def store(self, value):
+        self.register = value
 
 class Function:
 
