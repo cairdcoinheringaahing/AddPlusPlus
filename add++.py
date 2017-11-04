@@ -321,6 +321,8 @@ class StackScript:
                 'EP':lambda: Stack([i[1:] for i in self.stack]),
                 'EL':lambda: Stack([len(i) for i in self.stack]),
                 'Es':lambda: Stack([sum(i) for i in self.stack]),
+                'E|':lambda: Stack([abs(i) for i in self.stack]),
+                'E_':lambda: Stack([-i for i in self.stack]),
 
                 'Bx':lambda: self.stack.push(self.stack.pop() ^ self.stack.pop()),
                 'Ba':lambda: self.stack.push(self.stack.pop() & self.stack.pop()),
