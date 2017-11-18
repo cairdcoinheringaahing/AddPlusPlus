@@ -491,7 +491,7 @@ class Function:
         if self.flags[3]:
             print(value)
             return Null(value)
-        return value
+        return int(value) if type(value) == bool else value
         
     def __repr__(self):
         return '<Function ${}: {}>'.format(self.name, self.code)
