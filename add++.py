@@ -14,25 +14,18 @@ def isdigit(string):
     return all(i in '1234567890-.' for i in string)
 
 def eval_(string):
-    if '.' in string:
-        return float(string)
-    try:
-        return int(string)
-    except:
-        return string
+    if '.' in string: return float(string)
+    try: return int(string)
+    except: return string
 
 class Stack(list):
     def push(self, *values):
         for v in values:
-            try:
-                self.append(v.replace("'",'"'))
-            except:
-                self.append(v)
+            try: self.append(v.replace("'",'"'))
+            except: self.append(v)
     def pop(self,index=-1):
-        try:
-            return super().pop(index)
-        except:
-            raise error.EmptyStackError()
+        try: return super().pop(index)
+        except: raise error.EmptyStackError()
     
     def swap(self):
         self[-1], self[-2] = self[-2], self[-1]
@@ -149,7 +142,7 @@ class StackScript:
     
     @property
     def COMMANDS(self):
-        return {' ':lambda *a: None,
+        return {' ':lambda *_: None,
 
                 '+':lambda: self.stack.push(add(self.stack.pop(), self.stack.pop())),
                 '_':lambda: self.stack.push(subtract(self.stack.pop(), self.stack.pop())),
@@ -223,7 +216,7 @@ class StackScript:
                 'BR':lambda: self.stack.push(self.stack.pop()[::-1]),
                 'BF':lambda: self.flatten(),
 				
-		'E#':lambda: Stack([sorted(i) for i in self.stack]),
+				'E#':lambda: Stack([sorted(i) for i in self.stack]),
                 'E@':lambda: Stack([i[::-1] for i in self.stack]),
                 'ER':lambda: Stack([list(range(1, i+1)) for i in self.stack]),
                 'EC':lambda: self.collect(),
@@ -233,8 +226,8 @@ class StackScript:
                 'EP':lambda: Stack([i[1:] for i in self.stack]),
                 'EL':lambda: Stack([len(i) for i in self.stack]),
                 'Es':lambda: Stack([sum(i) for i in self.stack]),
-		'E|':lambda: Stack([abs(i) for i in self.stack]),
-		'E_':lambda: Stack([-i for i in self.stack]),
+				'E|':lambda: Stack([abs(i) for i in self.stack]),
+				'E_':lambda: Stack([-i for i in self.stack]),
 
                 'bM':lambda: self.stack.push(max(self.stack.pop())),
                 'bm':lambda: self.stack.push(min(self.stack.pop())),
@@ -335,7 +328,7 @@ class StackScript:
         return self.stack.pop()
         
     def store(self, value):
-        self.register = value]
+        self.register = value
         
     @staticmethod
     def stringify(value):
@@ -443,7 +436,7 @@ class Script:
                     cmd = cmd.split(',')
                     flags = cmd[0][1:]
                     lambda_c = ','.join(cmd[1:])
-                    lambda_n = len(list(filter(lambda a:bool(re.search(r'^lambda \d+$', a)), self.functions.keys()))) + 1
+                    lambda_n = len(list(filter(lambda a: bool(re.search(r'^lambda \d+$', a)), self.functions.keys()))) + 1
                     name = 'lambda {}'.format(lambda_n)
                     lambda_f = []
                     for flag in '*^?:!':
@@ -460,14 +453,14 @@ class Script:
                     if c == '?':
                         try: acc = inputs[I]; I += 1
                         except: acc = 0
-                    elif c == 'x': acc = self.x
-                    elif c == 'y': acc = self.y
-                    elif c == 'G':
+					elif c == 'G':
                         try: acc = self.stored.pop()
                         except: raise error.EmptySecondStackError(line, code[line-1])
+                    elif c == 'x': acc = self.x
+                    elif c == 'y': acc = self.y
                     elif c == 'g': acc = self.stored[-1]
                     else: acc = eval_(c)
-                        
+					
                     if acc_n == 'x': self.x = acc
                     if acc_n == 'y': self.y = acc
                         
@@ -481,15 +474,13 @@ class Script:
                         if c == '?':
                             try: args.append(inputs[I]); I += 1
                             except: args.append(0)
-                        elif c == 'x': args.append(self.x)
-                        elif c == 'y': args.append(self.y)
-                        elif c == 'G':
+						elif c == 'G':
                             try: args.append(self.stored.pop())
                             except: raise error.EmptySecondStackError(line, code[line-1])
+                        elif c == 'x': args.append(self.x)
+                        elif c == 'y': args.append(self.y)
                         elif c == 'g': args.append(self.stored[-1])
-                        elif c == '_':
-                            for element in self.stored:
-                                args.append(element)
+                        elif c == '_': args += self.stored
                         else: args.append(eval_(c))
                             
                     value = func(*args)
