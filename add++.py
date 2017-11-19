@@ -69,6 +69,7 @@ class StackScript:
 
     def __init__(self, code, args, stack=Stack(), line=0, general_code=''):
         self.args = args
+        self.register = args[0] if args else 0
         self.stack = stack
         self.code = StackScript.tokenize(code)
         if self.code[-1] in 'BEb':
@@ -192,17 +193,8 @@ class StackScript:
                 'r':lambda: self.stack.push(list(range(self.stack.pop(), self.stack.pop()))),
                 'J':lambda: self.join(''),
                 'j':lambda: self.join(str(self.stack.pop())),
-                
-                'E#':lambda: Stack([sorted(i) for i in self.stack]),
-                'E@':lambda: Stack([i[::-1] for i in self.stack]),
-                'ER':lambda: Stack([list(range(1, i+1)) for i in self.stack]),
-                'EC':lambda: self.collect(),
-                'ED':lambda: Stack([[int(i) for i in list(str(j))] for j in self.stack]),
-                'Ed':lambda: Stack([int(''.join(map(str, i))) for i in self.stack]),
-                'Ep':lambda: Stack([i[:-1] for i in self.stack]),
-                'EP':lambda: Stack([i[1:] for i in self.stack]),
-                'EL':lambda: Stack([len(i) for i in self.stack]),
-                'Es':lambda: Stack([sum(i) for i in self.stack]),
+                'V':lambda: self.store(self.stack.pop()),
+                'G':lambda: self.stack.push(self.register),
 
                 'Bx':lambda: self.stack.push(self.stack.pop() ^ self.stack.pop()),
                 'Ba':lambda: self.stack.push(self.stack.pop() & self.stack.pop()),
@@ -230,6 +222,19 @@ class StackScript:
                 'BC':lambda: self.stack.push(int(''.join(map(str, self.stack.pop())), self.stack.pop())),
                 'BR':lambda: self.stack.push(self.stack.pop()[::-1]),
                 'BF':lambda: self.flatten(),
+				
+				'E#':lambda: Stack([sorted(i) for i in self.stack]),
+                'E@':lambda: Stack([i[::-1] for i in self.stack]),
+                'ER':lambda: Stack([list(range(1, i+1)) for i in self.stack]),
+                'EC':lambda: self.collect(),
+                'ED':lambda: Stack([[int(i) for i in list(str(j))] for j in self.stack]),
+                'Ed':lambda: Stack([int(''.join(map(str, i))) for i in self.stack]),
+                'Ep':lambda: Stack([i[:-1] for i in self.stack]),
+                'EP':lambda: Stack([i[1:] for i in self.stack]),
+                'EL':lambda: Stack([len(i) for i in self.stack]),
+                'Es':lambda: Stack([sum(i) for i in self.stack]),
+				'E|':lambda: Stack([abs(i) for i in self.stack]),
+				'E_':lambda: Stack([-i for i in self.stack]),
 
                 'bM':lambda: self.stack.push(max(self.stack.pop())),
                 'bm':lambda: self.stack.push(min(self.stack.pop())),
@@ -255,32 +260,6 @@ class StackScript:
     def apply(self, func):
         self.stack = Stack(map(func, self.stack))
         
-    def eq(self, *args):
-        incs = [args[i] == args[i-1] for i in range(1, len(args))]
-        return all(incs)
-        
-    def join(self, char='\n'):
-        newstack = Stack()
-        newstack.push(char.join(map(str, self.stack)))
-        self.stack = newstack
-    
-    def factors(self):
-        lof = []
-        x = self.stack.pop()
-        if type(x) == str:
-            return list(x)
-        for i in range(1,int(x)):
-            if x%i == 0:
-                lof.append(i)
-        return lof
-    
-    def remove_duplicates(self):
-        final = []
-        for s in self.stack:
-            if s not in final:
-                final.append(s)
-        return final
-    
     def collect(self):
         array = []
         sub_array = []
@@ -295,8 +274,25 @@ class StackScript:
         if sub_array:
             array.append(sub_array)
         self.stack = Stack(array)
-
-    def flatten(self):
+		
+	def columns(self):
+        self.stack = Stack(map(list, zip(*self.stack)))
+        
+    def eq(self, *args):
+        incs = [args[i] == args[i-1] for i in range(1, len(args))]
+        return all(incs)
+    
+    def factors(self):
+        lof = []
+        x = self.stack.pop()
+        if type(x) == str:
+            return list(x)
+        for i in range(1,int(x)):
+            if x%i == 0:
+                lof.append(i)
+        return lof
+	
+	def flatten(self):
        def flatten_array(array):
            flat = []
            if type(array) == list:
@@ -309,33 +305,45 @@ class StackScript:
        copy = flatten_array(list(self.stack))
        self.stack.clear()
        self.stack.push(*copy)
-
+        
+    def join(self, char='\n'):
+        newstack = Stack()
+        newstack.push(char.join(map(str, self.stack)))
+        self.stack = newstack
+		
+	def pad_bin(self):
+        copy = self.stack.copy()
+        length = max(map(lambda a: len(bin(a)[2:]), copy))
+        for i in range(len(self.stack)):
+            self.stack[i] = Stack(map(eval_, bin(self.stack[i])[2:].rjust(length, '0')))
+		
+	def remove(self, even_odd):
+        self.stack = Stack(filter(lambda x: x%2 == int(bool(even_odd)), self.stack))
+        
+    def remove_duplicates(self):
+        final = []
+        for s in self.stack:
+            if s not in final:
+                final.append(s)
+        return final
+	
+	def run(self,flag,text):
+        if flag:
+            return self.stack
+        if text:
+            return ''.join(list(map(StackScript.stringify, self.stack)))
+        return self.stack.pop()
+        
+    def store(self, value):
+        self.register = value]
+        
     @staticmethod
     def stringify(value):
         try:
             return chr(int(abs(value)))
         except:
             return str(value)
-
-    def run(self,flag,text):
-        if flag:
-            return self.stack
-        if text:
-            return ''.join(list(map(StackScript.stringify, self.stack)))
-        return self.stack.pop()
-    
-    def remove(self,even_odd):
-        self.stack = Stack(filter(lambda x: x%2 == int(bool(even_odd)), self.stack))
-
-    def pad_bin(self):
-        copy = self.stack.copy()
-        length = max(map(lambda a: len(bin(a)[2:]), copy))
-        for i in range(len(self.stack)):
-            self.stack[i] = Stack(map(eval_, bin(self.stack[i])[2:].rjust(length, '0')))
-
-    def columns(self):
-        self.stack = Stack(map(list, zip(*self.stack)))
-
+		
     def wrap(self):
         array = self.stack.copy()
         self.stack.clear()
@@ -359,7 +367,7 @@ class Function:
                 args.append(-1)
                 
         if self.flags[4]:
-            self.stack.push(args)
+            self.stack.push(list(args))
         else:
             self.stack.push(*args)
         script = StackScript(self.code, args, self.stack, self.line, self.gen)
@@ -368,7 +376,7 @@ class Function:
         if self.flags[3]:
             print(value)
             return Null(value)
-        return value
+        return int(value) if type(value) == bool else value
         
     def __repr__(self):
         return '<Function ${}: {}>'.format(self.name, self.code)
