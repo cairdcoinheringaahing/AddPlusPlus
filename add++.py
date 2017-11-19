@@ -268,7 +268,7 @@ class StackScript:
             array.append(sub_array)
         self.stack = Stack(array)
 		
-	def columns(self):
+    def columns(self):
         self.stack = Stack(map(list, zip(*self.stack)))
         
     def eq(self, *args):
@@ -285,7 +285,7 @@ class StackScript:
                 lof.append(i)
         return lof
 	
-	def flatten(self):
+    def flatten(self):
        def flatten_array(array):
            flat = []
            if type(array) == list:
@@ -304,13 +304,13 @@ class StackScript:
         newstack.push(char.join(map(str, self.stack)))
         self.stack = newstack
 		
-	def pad_bin(self):
+    def pad_bin(self):
         copy = self.stack.copy()
         length = max(map(lambda a: len(bin(a)[2:]), copy))
         for i in range(len(self.stack)):
             self.stack[i] = Stack(map(eval_, bin(self.stack[i])[2:].rjust(length, '0')))
 		
-	def remove(self, even_odd):
+    def remove(self, even_odd):
         self.stack = Stack(filter(lambda x: x%2 == int(bool(even_odd)), self.stack))
         
     def remove_duplicates(self):
@@ -320,7 +320,7 @@ class StackScript:
                 final.append(s)
         return final
 	
-	def run(self,flag,text):
+    def run(self,flag,text):
         if flag:
             return self.stack
         if text:
@@ -453,7 +453,7 @@ class Script:
                     if c == '?':
                         try: acc = inputs[I]; I += 1
                         except: acc = 0
-					elif c == 'G':
+                    elif c == 'G':
                         try: acc = self.stored.pop()
                         except: raise error.EmptySecondStackError(line, code[line-1])
                     elif c == 'x': acc = self.x
@@ -474,7 +474,7 @@ class Script:
                         if c == '?':
                             try: args.append(inputs[I]); I += 1
                             except: args.append(0)
-						elif c == 'G':
+                        elif c == 'G':
                             try: args.append(self.stored.pop())
                             except: raise error.EmptySecondStackError(line, code[line-1])
                         elif c == 'x': args.append(self.x)
