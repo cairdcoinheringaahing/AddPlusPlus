@@ -1,179 +1,58 @@
 import functools
+import inspect
 import math
 import operator
 import random
+import re
 import sys
 
-class EmptyStackError(Exception):
-    def __init__(self, num, line):
-        
-        self.message = '''Fatal error: EmptyStackError
-    line {}: '{}'
-        The stack is empty, and is unable to be popped from'''.format(num, line)
-        
-        super(EmptyStackError, self).__init__(self.message)
+import error
 
-class UnableToRetrieveFunctionError(Exception):
-    def __init__(self, num, line, name):
-
-        self.message = '''Fatal error: UnableToRetrieveFunctionError
-    line {}: '{}'
-        Unable to retrieve function {}. {} must be defined before calling'''.format(num, line, name, name)
-
-        super(UnableToRetrieveFunctionError, self).__init__(self.message)
-
-class EmptySecondStackError(Exception):
-    def __init__(self, num, line):
-        
-        self.message = '''Fatal error: EmptySecondStackError
-    line {}: '{}'
-        The second stack is empty, and is unable to be popped from'''.format(num, line)
-
-        super(EmptySecondStackError, self).__init__(self.message)
-
-class NoMoreInputError(Exception):
-    def __init__(self, num, line):
-        
-        self.message = '''Fatal error: NoMoreInputError
-    line {}: '{}'
-        All input has been used, and cannot be used again'''.format(num, line)
-
-        super(NoMoreInputError, self).__init__(self.message)
-
-class InvalidSymbolError(Exception):
-    def __init__(self, num, line, char):
-        
-        self.message = '''Fatal error: InvalidSymbolError
-    line {}: '{}'
-        The character '{}' is an invalid Add++ character'''.format(num, line, char)
-
-        super(InvalidSymbolError, self).__init__(self.message)
-
-class DivisionByZeroError(Exception):
-    def __init__(self, num, line):
-        
-        self.message = '''Fatal error: DivisionByZeroError
-    line {}: '{}'
-        The laws of mathematics dictate that you are unable to divide by 0'''.format(num, line)
-
-        super(DivisionByZeroError, self).__init__(self.message)
-
-class PythonError(Exception):
-    def __init__(self, num, line, error):
-
-        self.message = '''Fatal error: PythonError
-    line {}: '{}'
-        Python error raised: {}'''.format(num, line, error)
-
-        super(PythonError, self).__init__(self.message)
-
-CUSTOM_ERRORS = [EmptyStackError, UnableToRetrieveFunctionError, EmptySecondStackError, NoMoreInputError, InvalidSymbolError, DivisionByZeroError]
+CUSTOM_ERRORS = [m[0] for m in inspect.getmembers(error, inspect.isclass) if m[1].__module__ == 'error']
 
 def isdigit(string):
     return all(i in '1234567890-.' for i in string)
 
 def eval_(string):
-    if '.' in string:
-        return float(string)
-    try:
-        return int(string)
-    except:
-        return string
+    if '.' in string: return float(string)
+    try: return int(string)
+    except: return string
 
 class Stack(list):
     def push(self, *values):
         for v in values:
-            try:
-                self.append(v.replace("'",'"'))
-            except:
-                self.append(v)
+            try: self.append(v.replace("'",'"'))
+            except: self.append(v)
     def pop(self,index=-1):
-        try:
-            return super().pop(index)
-        except:
-            raise EmptyStackError()
+        try: return super().pop(index)
+        except: raise error.EmptyStackError()
     
     def swap(self):
         self[-1], self[-2] = self[-2], self[-1]
         
 def add(x,y):
-    if type(x) == str and type(y) == int:
-        return ''.join(map(lambda c: chr(ord(c)+y), x))
-    if type(x) == int and type(y) == str:
-        return ''.join(map(lambda c: chr(ord(c)+x), y))
-    return x + y
+    return y + x
 
 def subtract(x,y):
-    if type(x) == str and type(y) == str:
-        for char in y:
-            x = x.replace(char, "")
-        return x
-    if type(x) == str and type(y) == int:
-        return ''.join(map(lambda c: chr(ord(c)-y), x))
-    if type(x) == int and type(y) == str:
-        return ''.join(map(lambda c: chr(ord(c)-x), y))
-    return x - y
+    return y - x
 
 def multiply(x,y):
-    if type(x) == str and type(y) == str:
-        final = ""
-        for a,b in zip(x,y):
-            final += chr(ord(a)+ord(b))
-        return final
-    if type(x) == str and type(y) == int:
-        return ''.join(map(lambda c: c*y, x))
-    if type(x) == int and type(y) == str:
-        return x * y
-    return x * y
+    return y * x
 
 def divide(x,y):
-    if type(x) == str and type(y) == str:
-            final = ""
-            for a,b in zip(x,y):
-                final += chr(max(ord(a),ord(b))-min(ord(a),ord(b)))
-            return final
-    if type(x) == str and type(y) == int:
-        return ''.join(map(lambda c: chr(ord(c)//y), x))
-    if type(x) == int and type(y) == str:
-        return ''.join(map(lambda c: chr(ord(c)//x), y))
-    return x / y
+    return y / x
 
 def exponent(x,y):
-    if type(x) == str and type(y) == str:
-        final = ""
-        for a,b in zip(x,y):
-            final += [a,b][b>a]
-        return final
-    if type(x) == int and type(y) == int:
-        return x ** y
-    c = x if type(x) == int else y
-    d = y if c == x else x
-    final = d
-    for i in range(c-1):
-        final = multiply(final,d)
-    return final
+    return y * x
 
 def modulo(x,y):
-    if type(x) == str and type(y) == str:
-        return x % y
-    if type(x) == str and type(y) == int:
-        return ''.join(map(lambda c: chr(ord(c)%y), x))
-    if type(x) == int and type(y) == str:
-        return ''.join(map(lambda c: chr(ord(c)%x), y))
-    return x%y
-
-def absolute(x):
-    if type(x) == str:
-        return x
-    return abs(x)
+    return y % x
 
 def isprime(x):
-    if type(x) == str:
-        return False
     for i in range(2,x):
         if x%i == 0:
             return False
-    return True
+    return x > 1 and isinstance(x, int)
 
 class Null:
     def __init__(self, value):
@@ -207,22 +86,21 @@ class StackScript:
                     cont = 1
                 try:
                     result = self.COMMANDS[cmd]()
-                except EmptyStackError:
-                    raise EmptyStackError(line, ','.join(general_code[line-1]))
+                except error.EmptyStackError:
+                    raise error.EmptyStackError(line, ','.join(general_code[line-1]))
                 except KeyError:
-                    raise InvalidSymbolError(line, ','.join(general_code[line-1]), cmd)
-                except Exception as error:
+                    raise error.InvalidSymbolError(line, ','.join(general_code[line-1]), cmd)
+                except Exception as n_error:
                     try:
-                        raise error(line, ','.join(general_code[line-1]))
+                        raise n_error(line, ','.join(general_code[line-1]))
                     except Exception as e:
-                        raise PythonError(line, ','.join(general_code[line-1]), e)
+                        raise error.PythonError(line, ','.join(general_code[line-1]), e)
                 if type(result) == Stack:
                     self.stack = result
                     del result
 
     @staticmethod
     def tokenize(text):
-        
         final = []
         temp = ''
         num = ''
@@ -264,7 +142,7 @@ class StackScript:
     
     @property
     def COMMANDS(self):
-        return {' ':lambda *a: None,
+        return {' ':lambda *_: None,
 
                 '+':lambda: self.stack.push(add(self.stack.pop(), self.stack.pop())),
                 '_':lambda: self.stack.push(subtract(self.stack.pop(), self.stack.pop())),
@@ -276,7 +154,7 @@ class StackScript:
                 '!':lambda: self.stack.push(not self.stack.pop()),
                 '#':lambda: self.stack.sort(),
                 ';':lambda: self.stack.push(self.stack.pop() * 2),
-                '|':lambda: self.stack.push(absolute(self.stack.pop())),
+                '|':lambda: self.stack.push(abs(self.stack.pop())),
                 '<':lambda: self.stack.push(self.stack.pop() < self.stack.pop()),
                 '>':lambda: self.stack.push(self.stack.pop() > self.stack.pop()),
                 '?':lambda: self.stack.push(bool(self.stack.pop())),
@@ -310,19 +188,6 @@ class StackScript:
                 'j':lambda: self.join(str(self.stack.pop())),
                 'V':lambda: self.store(self.stack.pop()),
                 'G':lambda: self.stack.push(self.register),
-                
-                'E#':lambda: Stack([sorted(i) for i in self.stack]),
-                'E@':lambda: Stack([i[::-1] for i in self.stack]),
-                'ER':lambda: Stack([list(range(1, i+1)) for i in self.stack]),
-                'EC':lambda: self.collect(),
-                'ED':lambda: Stack([[int(i) for i in list(str(j))] for j in self.stack]),
-                'Ed':lambda: Stack([int(''.join(map(str, i))) for i in self.stack]),
-                'Ep':lambda: Stack([i[:-1] for i in self.stack]),
-                'EP':lambda: Stack([i[1:] for i in self.stack]),
-                'EL':lambda: Stack([len(i) for i in self.stack]),
-                'Es':lambda: Stack([sum(i) for i in self.stack]),
-                'E|':lambda: Stack([abs(i) for i in self.stack]),
-                'E_':lambda: Stack([-i for i in self.stack]),
 
                 'Bx':lambda: self.stack.push(self.stack.pop() ^ self.stack.pop()),
                 'Ba':lambda: self.stack.push(self.stack.pop() & self.stack.pop()),
@@ -350,6 +215,19 @@ class StackScript:
                 'BC':lambda: self.stack.push(int(''.join(map(str, self.stack.pop())), self.stack.pop())),
                 'BR':lambda: self.stack.push(self.stack.pop()[::-1]),
                 'BF':lambda: self.flatten(),
+				
+				'E#':lambda: Stack([sorted(i) for i in self.stack]),
+                'E@':lambda: Stack([i[::-1] for i in self.stack]),
+                'ER':lambda: Stack([list(range(1, i+1)) for i in self.stack]),
+                'EC':lambda: self.collect(),
+                'ED':lambda: Stack([[int(i) for i in list(str(j))] for j in self.stack]),
+                'Ed':lambda: Stack([int(''.join(map(str, i))) for i in self.stack]),
+                'Ep':lambda: Stack([i[:-1] for i in self.stack]),
+                'EP':lambda: Stack([i[1:] for i in self.stack]),
+                'EL':lambda: Stack([len(i) for i in self.stack]),
+                'Es':lambda: Stack([sum(i) for i in self.stack]),
+				'E|':lambda: Stack([abs(i) for i in self.stack]),
+				'E_':lambda: Stack([-i for i in self.stack]),
 
                 'bM':lambda: self.stack.push(max(self.stack.pop())),
                 'bm':lambda: self.stack.push(min(self.stack.pop())),
@@ -375,32 +253,6 @@ class StackScript:
     def apply(self, func):
         self.stack = Stack(map(func, self.stack))
         
-    def eq(self, *args):
-        incs = [args[i] == args[i-1] for i in range(1, len(args))]
-        return all(incs)
-        
-    def join(self, char='\n'):
-        newstack = Stack()
-        newstack.push(char.join(map(str, self.stack)))
-        self.stack = newstack
-    
-    def factors(self):
-        lof = []
-        x = self.stack.pop()
-        if type(x) == str:
-            return list(x)
-        for i in range(1,int(x)):
-            if x%i == 0:
-                lof.append(i)
-        return lof
-    
-    def remove_duplicates(self):
-        final = []
-        for s in self.stack:
-            if s not in final:
-                final.append(s)
-        return final
-    
     def collect(self):
         array = []
         sub_array = []
@@ -415,8 +267,25 @@ class StackScript:
         if sub_array:
             array.append(sub_array)
         self.stack = Stack(array)
-
-    def flatten(self):
+		
+	def columns(self):
+        self.stack = Stack(map(list, zip(*self.stack)))
+        
+    def eq(self, *args):
+        incs = [args[i] == args[i-1] for i in range(1, len(args))]
+        return all(incs)
+    
+    def factors(self):
+        lof = []
+        x = self.stack.pop()
+        if type(x) == str:
+            return list(x)
+        for i in range(1,int(x)):
+            if x%i == 0:
+                lof.append(i)
+        return lof
+	
+	def flatten(self):
        def flatten_array(array):
            flat = []
            if type(array) == list:
@@ -429,40 +298,49 @@ class StackScript:
        copy = flatten_array(list(self.stack))
        self.stack.clear()
        self.stack.push(*copy)
-
+        
+    def join(self, char='\n'):
+        newstack = Stack()
+        newstack.push(char.join(map(str, self.stack)))
+        self.stack = newstack
+		
+	def pad_bin(self):
+        copy = self.stack.copy()
+        length = max(map(lambda a: len(bin(a)[2:]), copy))
+        for i in range(len(self.stack)):
+            self.stack[i] = Stack(map(eval_, bin(self.stack[i])[2:].rjust(length, '0')))
+		
+	def remove(self, even_odd):
+        self.stack = Stack(filter(lambda x: x%2 == int(bool(even_odd)), self.stack))
+        
+    def remove_duplicates(self):
+        final = []
+        for s in self.stack:
+            if s not in final:
+                final.append(s)
+        return final
+	
+	def run(self,flag,text):
+        if flag:
+            return self.stack
+        if text:
+            return ''.join(list(map(StackScript.stringify, self.stack)))
+        return self.stack.pop()
+        
+    def store(self, value):
+        self.register = value
+        
     @staticmethod
     def stringify(value):
         try:
             return chr(int(abs(value)))
         except:
             return str(value)
-
-    def run(self,flag,text):
-        if flag:
-            return self.stack
-        if text:
-            return ''.join(list(map(StackScript.stringify, self.stack)))
-        return self.stack.pop()
-    
-    def remove(self,even_odd):
-        self.stack = Stack(filter(lambda x: x%2 == int(bool(even_odd)), self.stack))
-
-    def pad_bin(self):
-        copy = self.stack.copy()
-        length = max(map(lambda a: len(bin(a)[2:]), copy))
-        for i in range(len(self.stack)):
-            self.stack[i] = Stack(map(eval_, bin(self.stack[i])[2:].rjust(length, '0')))
-
-    def columns(self):
-        self.stack = Stack(map(list, zip(*self.stack)))
-
+		
     def wrap(self):
         array = self.stack.copy()
         self.stack.clear()
         self.stack.push(array)
-
-    def store(self, value):
-        self.register = value
 
 class Function:
 
@@ -498,61 +376,55 @@ class Function:
 
 class Script:
 
-    def __init__(self,code,inputs=(),x=0,recur=False):
+    def __init__(self,code, inputs=()):
 
         self.NILADS = r'!~&#@NPOHSQVG'
         self.MONADS = r'+-*/\^><%=R'
+        self.CONSTRUCTS = r'FWEID'
         
-        code = list(map(lambda x: x.split(','), filter(None, code.split('\n'))))
+        code = list(filter(None, code.split('\n')))
             
-        if not recur:
-            self.called = False
-            self.implicit = False
-            self.stored = []
-            self.string = ''
-            self.functions = {}
-            I = 0
-            self.y = 0
-            line = 0
-
-        self.x = x
-        
-        f = code[:]
-        code.clear()
-        for i in range(len(f)):
-            if len(f[i]) > 1:
-                code.append(f[i])
-            else:
-                code.append(f[i][0])
-        
-        try:
-            if code[0] not in 'FIEWD':
-                self.x = x
-                self.code = code
-        except:
-            if code[0][0] not in 'FEIWD':
-                self.x = x
-                self.code = code
+        self.called = False
+        self.implicit = False
+        self.stored = []
+        self.string = ''
+        self.functions = {}
+        self.y = 0
+        self.x = 0
+        line = 0
+        I = 0
             
         for cmd in code:
-            
-            if not recur:
-                line += 1
+            line += 1
                 
-            if type(cmd) == list:
+            if cmd[0] in self.CONSTRUCTS:
                 if cmd[0] == 'F':
-                    for i in range(int(self.x)):
-                        self.__init__('\n'.join(cmd),inputs,recur=True)
-                if cmd[0] == 'E':
-                    for i in range(int(self.x)):
-                        self.__init__('\n'.join(cmd),inputs,i,recur=True)
+                    loop = cmd[1:].split(',')
+                    for _ in range(self.x):
+                        for line in loop:
+                            self.run_chunk(line)
+                if cmd[:2] == 'EX':
+                    loop = cmd[2:].split(',')
+                    for element in self.stored:
+                        for line in loop:
+                            self.run_chunk(line, x=element)
+                if cmd[:2] == 'EY':
+                    loop = cmd[1:].split(',')
+                    for element in self.stored:
+                        for line in loop:
+                            self.run_chunk(line, y=element)
                 if cmd[0] == 'I':
+                    loop = cmd[1:].split(',')
                     if self.x:
-                        self.__init__('\n'.join(cmd),inputs,recur=True)
+                        for line in loop:
+                            self.run_chunk(line)
                 if cmd[0] == 'W':
+                    loop = cmd[1:].split(',')
                     while self.x:
-                        self.__init__('\n'.join(cmd),inputs,self.x,recur=True)
+                        for line in loop:
+                            self.run_chunk(line)
                 if cmd[0] == 'D':
+                    cmd = cmd.split(',')
                     func_name = cmd[1]
                     func_args = cmd[2].count('@')
                     func_flags = []
@@ -560,146 +432,115 @@ class Script:
                         func_flags.append(flag in cmd[2])
                     func_code = ','.join(cmd[3:])+' '
                     self.functions[func_name] = Function(func_name, func_args, func_code, line, code, *func_flags)
+                if cmd[0] == 'L':
+                    cmd = cmd.split(',')
+                    flags = cmd[0][1:]
+                    lambda_c = ','.join(cmd[1:])
+                    lambda_n = len(list(filter(lambda a: bool(re.search(r'^lambda \d+$', a)), self.functions.keys()))) + 1
+                    name = 'lambda {}'.format(lambda_n)
+                    lambda_f = []
+                    for flag in '*^?:!':
+                        lambda_f.append(flag == '?' or flag in flags)
+                    self.functions[name] = Function(name, 0, lambda_c, line, code, *func_flags)
                     
             else:
                 self.implicit = True
-                if cmd[:2] == 'x:':
-                    c = cmd[2:]
-                    if c == '?':
-                        try:
-                            self.x = inputs[I]
-                            I += 1
-                        except:
-                            self.x = 0
-                    elif c == 'x':
-                        self.x = self.x
-                    elif c == 'y':
-                        self.x = self.y
-                    elif c == 'G':
-                        self.x = self.stored.pop()
-                    elif c == 'g':
-                        self.x = self.stored[-1]
-                    else:
-                        self.x = eval_(c)
+                if cmd[:2] in ['x:', 'y:']:
+                    if cmd[0] == 'x': acc = self.x; acc_n = 'x'
+                    else: acc = self.y; acc_n = 'y'
                         
-                elif cmd[:2] == 'y:':
                     c = cmd[2:]
                     if c == '?':
-                        try:
-                            self.y = inputs[I]
-                            I += 1
-                        except:
-                            self.y = 0
-                    elif c == 'x':
-                        self.y = self.x
-                    elif c == 'y':
-                        self.y = self.y
-                    elif c == 'G':
-                        self.y = self.stored.pop()
-                    elif c == 'g':
-                        self.y = self.stored[-1]
-                    else:
-                        self.y = eval_(c)
+                        try: acc = inputs[I]; I += 1
+                        except: acc = 0
+					elif c == 'G':
+                        try: acc = self.stored.pop()
+                        except: raise error.EmptySecondStackError(line, code[line-1])
+                    elif c == 'x': acc = self.x
+                    elif c == 'y': acc = self.y
+                    elif c == 'g': acc = self.stored[-1]
+                    else: acc = eval_(c)
+					
+                    if acc_n == 'x': self.x = acc
+                    if acc_n == 'y': self.y = acc
                         
                 elif cmd[0] == '$':
                     self.called = True
                     cmd = cmd.split('>')
-                    try:
-                        func = self.functions[cmd[0][1:]]
-                    except:
-                        raise UnableToRetrieveFunctionError(line, code[line-1], cmd[0][1:])
+                    try: func = self.functions[cmd[0][1:]]
+                    except: raise error.UnableToRetrieveFunctionError(line, code[line-1], cmd[0][1:])
                     args = []
                     for c in cmd[1:]:
                         if c == '?':
-                            try:
-                                args.append(inputs[I])
-                                I += 1
-                            except:
-                                args.append(0)
-                        elif c == 'x':
-                            args.append(self.x)
-                        elif c == 'y':
-                            args.append(self.y)
-                        elif c == 'G':
-                            args.append(self.stored.pop())
-                        elif c == 'g':
-                            args.append(self.stored[-1])
-                        elif c == '_':
-                            for element in self.stored:
-                                args.append(element)
-                        else:
-                            args.append(eval_(c))
+                            try: args.append(inputs[I]); I += 1
+                            except: args.append(0)
+						elif c == 'G':
+                            try: args.append(self.stored.pop())
+                            except: raise error.EmptySecondStackError(line, code[line-1])
+                        elif c == 'x': args.append(self.x)
+                        elif c == 'y': args.append(self.y)
+                        elif c == 'g': args.append(self.stored[-1])
+                        elif c == '_': args += self.stored
+                        else: args.append(eval_(c))
                             
                     value = func(*args)
-                    if type(value) == Null:
-                        value = value.value
+                    if type(value) == Null: value = value.value
+                    if type(value) == str: self.stored.append(value)
                     if type(value) == list:
                         for v in value:
                             self.stored.append(v)
-                    if type(value) == str:
-                        self.stored.append(value)
                     self.x = value
-                else:
                     
-                    symbol = cmd[0]
-                    if symbol == "_":
-                        for i in inputs:
-                            self.stored.append(i)
-                    if symbol == '}':
-                        self.x, self.y = self.y, self.x
-                    if len(cmd) > 1:
-                        value = eval_(cmd[1:])
-                    else:
-                        value = None
-
-                    if value is not None:
-                        if value == '?':
-                            try:
-                                value = inputs[I]
-                                I += 1
-                            except:
-                                raise NoMoreInputError(line, code[line-1])
-                        if value == 'G':
-                            try:
-                                value = self.stored.pop()
-                            except:
-                                raise EmptySecondStackError(line, code[line-1])
-                        if value == 'g':
-                            value = self.stored[-1]
-                        if value == 'x':
-                            value = self.x
-                        if value == 'y':
-                            value = self.y
-                        try:
-                            self.x = self.COMMANDS[symbol](value)
-                        except ZeroDivisionError:
-                            raise DivisionByZeroError(line, code[line-1])
-                        except:
-                            raise InvalidSymbolError(line, code[line-1], symbol)
-                    else:
-                        try:
-                            v = self.COMMANDS[symbol]()
-                        except:
-                            if symbol == '?':
-                                try:
-                                    v = inputs[I]
-                                    I += 1
-                                except:
-                                    raise NoMoreInputError(line, code[line-1])
-                            else:
-                                v = None
-                        if v is None:
-                            continue
-                        self.x = v
-
+                else:
+                    self.run_chunk(cmd)
+                    
         if not self.called and self.functions:
             func = self.functions[list(self.functions.keys())[0]]
-            if I < len(inputs):
-                result = func(*inputs[I:])
-            else:
-                result = func()
+            if I < len(inputs): result = func(*inputs[I:])
+            elif self.x:
+                if self.y: result = func(self.x, self.y)
+                else: result = func(self.x)
+            else: result = func()
             if type(result) != Null and not self.implicit:
                 print(result)
+                
+    def run_chunk(self, cmd, x=None, y=None):
+        if x is not None: self.x = x
+        if y is not None: self.y = y
+            
+        symbol = cmd[0]
+        if symbol == "_":
+            for i in inputs:
+                self.stored.append(i)
+        if symbol == '}': self.x, self.y = self.y, self.x
+            
+        if len(cmd) > 1: value = eval_(cmd[1:])
+        else: value = None
+
+        if value is not None:
+            if value == '?':
+                try: value = inputs[I];  I += 1
+                except: raise error.NoMoreInputError(line, code[line-1])
+            if value == 'G':
+                try: value = self.stored.pop()
+                except: raise error.EmptySecondStackError(line, code[line-1])
+            if value == 'g': value = self.stored[-1]
+            if value == 'x': value = self.x
+            if value == 'y': value = self.y
+                
+            try: self.x = self.COMMANDS[symbol](value)
+            except ZeroDivisionError: raise error.DivisionByZeroError(line, code[line-1])
+            except: raise error.InvalidSymbolError(line, code[line-1], symbol)
+                
+        else:
+            try: v = self.COMMANDS[symbol]()
+            except:
+                if symbol == '?':
+                    try: v = inputs[I]; I += 1
+                    except: raise error.NoMoreInputError(line, code[line-1])
+                else: v = None
+            if v is None: return
+            self.x = v
 
     def __call__(self, *values):
         return None
@@ -738,85 +579,39 @@ class Script:
                 'E':self,
                 'D':self}
 
-    def add(self,y):
-        return self.x + y
-
-    def minus(self,y):
-        return self.x - y
-
-    def times(self,y):
-        return self.x * y
-
-    def divide(self,y):
-        return self.x / y
-    
-    def int_divide(self,y):
-        return int(self.x / y)
-
-    def power(self,y):
-        return self.x ** y
-
-    def greater(self,y):
-        return int(self.x > y)
-
-    def less(self,y):
-        return int(self.x < y)
-    
-    def factorial(self):
-        return math.factorial(self.x)
-
-    def modulo(self,y):
-        return self.x % y
-
-    def negative(self):
-        return -self.x
-
-    def equal(self,y):
-        return int(self.x == y)
-
-    def next(self):
-        self.string += chr(self.x)
-
-    def double(self):
-        return self.x * 2
-
-    def half(self):
-        return self.x / 2
-
-    def notequals(self,y):
-        return int(self.x != y)
-
-    def not_(self):
-        return int(not self.x)
-
-    def print(self):
-        if self.string:
-            print(self.string)
-        else:
-            print(chr(self.x))
-
-    def print_(self):
-        print(self.x)
+    def add(self, y):        return self.x + y
+    def minus(self, y):      return self.x - y
+    def times(self, y):      return self.x * y
+    def divide(self, y):     return self.x / y
+    def int_divide(self, y): return int(self.x / y)
+    def power(self, y):      return self.x ** y
+    def greater(self, y):    return int(self.x > y)
+    def less(self, y):       return int(self.x < y)
+    def factorial(self):     return math.factorial(self.x)
+    def modulo(self, y):     return self.x % y
+    def negative(self):      return -self.x
+    def equal(self, y):      return int(self.x == y)
+    def next(self):          self.string += chr(self.x)
+    def double(self):        return self.x * 2
+    def half(self):          return self.x / 2
+    def notequals(self, y):  return int(self.x != y)
+    def not_(self):          return int(not self.x)
+    def print_(self):        print(self.x)
+    def sqrt(self):          return math.sqrt(self.x)
+    def store(self):         self.stored.append(self.x)
+    def get(self):           self.x = self.stored.pop()
         
     def _print(self):
-        if self.string:
-            print(end=self.string)
-        else:
-            print(end=chr(self.x))
-
+        if self.string: print(end=self.string)
+        else: print(end=chr(self.x))
+            
+    def print(self):
+        if self.string: print(self.string)
+        else: print(chr(self.x))
+            
     def randint(self,y=0):
-        if y > self.x:
-            return random.randint(self.x, y)
+        if y > self.x: return random.randint(self.x, y)
         return random.randint(y, self.x)
-    
-    def sqrt(self):
-        return math.sqrt(self.x)
-        
-    def store(self):
-        self.stored.append(self.x)
-        
-    def get(self):
-        self.x = self.stored.pop()
 
 if __name__ == '__main__':
 
