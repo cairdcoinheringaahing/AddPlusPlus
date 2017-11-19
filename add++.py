@@ -216,7 +216,7 @@ class StackScript:
                 'BR':lambda: self.stack.push(self.stack.pop()[::-1]),
                 'BF':lambda: self.flatten(),
 				
-				'E#':lambda: Stack([sorted(i) for i in self.stack]),
+		'E#':lambda: Stack([sorted(i) for i in self.stack]),
                 'E@':lambda: Stack([i[::-1] for i in self.stack]),
                 'ER':lambda: Stack([list(range(1, i+1)) for i in self.stack]),
                 'EC':lambda: self.collect(),
@@ -226,8 +226,8 @@ class StackScript:
                 'EP':lambda: Stack([i[1:] for i in self.stack]),
                 'EL':lambda: Stack([len(i) for i in self.stack]),
                 'Es':lambda: Stack([sum(i) for i in self.stack]),
-				'E|':lambda: Stack([abs(i) for i in self.stack]),
-				'E_':lambda: Stack([-i for i in self.stack]),
+		'E|':lambda: Stack([abs(i) for i in self.stack]),
+		'E_':lambda: Stack([-i for i in self.stack]),
 
                 'bM':lambda: self.stack.push(max(self.stack.pop())),
                 'bm':lambda: self.stack.push(min(self.stack.pop())),
