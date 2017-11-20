@@ -380,7 +380,7 @@ class Script:
 
         self.NILADS = r'!~&#@NPOHSQVG'
         self.MONADS = r'+-*/\^><%=R'
-        self.CONSTRUCTS = r'FWEID'
+        self.CONSTRUCTS = r'FWEIDL'
         
         code = list(filter(None, code.split('\n')))
             
@@ -441,7 +441,7 @@ class Script:
                     lambda_f = []
                     for flag in '*^?:!':
                         lambda_f.append(flag == '?' or flag in flags)
-                    self.functions[name] = Function(name, 0, lambda_c, line, code, *func_flags)
+                    self.functions[name] = Function(name, 0, lambda_c, line, code, *lambda_f)
                     
             else:
                 self.implicit = True
@@ -577,7 +577,8 @@ class Script:
                 'I':self,
                 'W':self,
                 'E':self,
-                'D':self}
+                'D':self,
+                'L':self}
 
     def add(self, y):        return self.x + y
     def minus(self, y):      return self.x - y
