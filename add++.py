@@ -394,28 +394,28 @@ class Script:
                 if cmd[0] == 'F':
                     loop = cmd[1:].split(',')
                     for _ in range(self.x):
-                        for line in loop:
-                            self.run_chunk(line)
+                        for chunk in loop:
+                            self.run_chunk(chunk)
                 if cmd[:2] == 'EX':
                     loop = cmd[2:].split(',')
                     for element in self.stored:
-                        for line in loop:
-                            self.run_chunk(line, x=element)
+                        for chunk in loop:
+                            self.run_chunk(chunk, x=element)
                 if cmd[:2] == 'EY':
                     loop = cmd[1:].split(',')
                     for element in self.stored:
-                        for line in loop:
-                            self.run_chunk(line, y=element)
+                        for chunk in loop:
+                            self.run_chunk(chunk, y=element)
                 if cmd[0] == 'I':
                     loop = cmd[1:].split(',')
                     if self.x:
-                        for line in loop:
-                            self.run_chunk(line)
+                        for chunk in loop:
+                            self.run_chunk(chunk)
                 if cmd[0] == 'W':
                     loop = cmd[1:].split(',')
                     while self.x:
-                        for line in loop:
-                            self.run_chunk(line)
+                        for chunk in loop:
+                            self.run_chunk(chunk)
                 if cmd[0] == 'D':
                     cmd = cmd.split(',')
                     func_name = cmd[1]
