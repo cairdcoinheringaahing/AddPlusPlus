@@ -611,11 +611,17 @@ if __name__ == '__main__':
 
     program = sys.argv[1]
     inputs = list(map(eval_, sys.argv[2:]))
-    
-    try:
+
+    if '--error' in sys.argv[2:]:
         if program.endswith('.txt'):
             Script(open(program).read(),inputs)
         else:
             Script(program,inputs)
-    except Exception as e:
-        print(e, file=sys.stderr)
+    else:
+        try:
+            if program.endswith('.txt'):
+                Script(open(program).read(),inputs)
+            else:
+                Script(program,inputs)
+        except Exception as e:
+            print(e, file=sys.stderr)
