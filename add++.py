@@ -107,12 +107,9 @@ class StackScript:
         instr = False
         
         for char in text:
-            
-            if char == '"':
-                instr = not instr
-
-            if instr:
-                temp += char
+            if char == '"': instr = not instr
+		
+            if instr:temp += char
             else:
                 if temp:
                     final.append(temp)
@@ -124,19 +121,15 @@ class StackScript:
                                 num += char
                         else:
                             num += char
-                    except:
-                        final.append(char)
+                    except: final.append(char)
                 else:
                     if num:
                         final.append(num)
                         num = ''
                     final.append(char)
 
-        if temp:
-            final.append(temp)
-        if num:
-            final.append(num)
-
+        if temp: final.append(temp)
+        if num: final.append(num)
         final = list(filter(lambda s: s!= '"', final))
         return final
     
