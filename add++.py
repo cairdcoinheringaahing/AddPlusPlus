@@ -87,12 +87,12 @@ class StackScript:
                 try:
                     result = self.COMMANDS[cmd]()
                 except error.EmptyStackError:
-                    raise error.EmptyStackError(line, ','.join(general_code[line-1]))
+                    raise error.EmptyStackError(line, general_code[line-1])
                 except KeyError:
-                    raise error.InvalidSymbolError(line, ','.join(general_code[line-1]), cmd)
+                    raise error.InvalidSymbolError(line, general_code[line-1], cmd)
                 except Exception as n_error:
                     try:
-                        raise n_error(line, ','.join(general_code[line-1]))
+                        raise n_error(line, general_code[line-1])
                     except Exception as e:
                         raise error.PythonError(line, ','.join(general_code[line-1]), e)
                 if type(result) == Stack:
@@ -384,11 +384,11 @@ class Script:
         self.functions = {}
         self.y = 0
         self.x = 0
-        line = 0
-        I = 0
+        self.line = 0
+        self.I = 0
             
         for cmd in code:
-            line += 1
+            self.line += 1
                 
             if cmd[0] in self.CONSTRUCTS:
                 if cmd[0] == 'F':
@@ -444,11 +444,11 @@ class Script:
                         
                     c = cmd[2:]
                     if c == '?':
-                        try: acc = inputs[I]; I += 1
+                        try: acc = inputs[self.I]; self.I += 1
                         except: acc = 0
                     elif c == 'G':
                         try: acc = self.stored.pop()
-                        except: raise error.EmptySecondStackError(line, code[line-1])
+                        except: raise error.EmptySecondStackError(self.line, code[self.line-1])
                     elif c == 'x': acc = self.x
                     elif c == 'y': acc = self.y
                     elif c == 'g': acc = self.stored[-1]
@@ -461,15 +461,15 @@ class Script:
                     self.called = True
                     cmd = cmd.split('>')
                     try: func = self.functions[cmd[0][1:]]
-                    except: raise error.UnableToRetrieveFunctionError(line, code[line-1], cmd[0][1:])
+                    except: raise error.UnableToRetrieveFunctionError(self.line, self.code[line-1], cmd[0][1:])
                     args = []
                     for c in cmd[1:]:
                         if c == '?':
-                            try: args.append(inputs[I]); I += 1
+                            try: args.append(inputs[self.I]); self.I += 1
                             except: args.append(0)
                         elif c == 'G':
                             try: args.append(self.stored.pop())
-                            except: raise error.EmptySecondStackError(line, code[line-1])
+                            except: raise error.EmptySecondStackError(self.line, code[self.line-1])
                         elif c == 'x': args.append(self.x)
                         elif c == 'y': args.append(self.y)
                         elif c == 'g': args.append(self.stored[-1])
@@ -489,7 +489,7 @@ class Script:
                     
         if not self.called and self.functions:
             func = self.functions[list(self.functions.keys())[0]]
-            if I < len(inputs): result = func(*inputs[I:])
+            if self.I < len(inputs): result = func(*inputs[self.I:])
             elif self.x:
                 if self.y: result = func(self.x, self.y)
                 else: result = func(self.x)
@@ -512,8 +512,8 @@ class Script:
 
         if value is not None:
             if value == '?':
-                try: value = inputs[I];  I += 1
-                except: raise error.NoMoreInputError(line, code[line-1])
+                try: value = inputs[self.I];  self.I += 1
+                except: raise error.NoMoreInputError(self.line, code[self.line-1])
             if value == 'G':
                 try: value = self.stored.pop()
                 except: raise error.EmptySecondStackError(line, code[line-1])
@@ -522,15 +522,15 @@ class Script:
             if value == 'y': value = self.y
                 
             try: self.x = self.COMMANDS[symbol](value)
-            except ZeroDivisionError: raise error.DivisionByZeroError(line, code[line-1])
-            except: raise error.InvalidSymbolError(line, code[line-1], symbol)
+            except ZeroDivisionError: raise error.DivisionByZeroError(self.line, code[self.line-1])
+            except: raise error.InvalidSymbolError(self.line, code[self.line-1], symbol)
                 
         else:
             try: v = self.COMMANDS[symbol]()
             except:
                 if symbol == '?':
-                    try: v = inputs[I]; I += 1
-                    except: raise error.NoMoreInputError(line, code[line-1])
+                    try: v = inputs[self.I]; self.I += 1
+                    except: raise error.NoMoreInputError(self.line, code[self.line-1])
                 else: v = None
             if v is None: return
             self.x = v
