@@ -424,7 +424,7 @@ class Script:
                     for flag in '*^?:!':
                         func_flags.append(flag in cmd[2])
                     func_code = ','.join(cmd[3:])+' '
-                    self.functions[func_name] = Function(func_name, func_args, func_code, line, code, *func_flags)
+                    self.functions[func_name] = Function(func_name, func_args, func_code, self.line, code, *func_flags)
                 if cmd[0] == 'L':
                     cmd = cmd.split(',')
                     flags = cmd[0][1:]
@@ -434,7 +434,7 @@ class Script:
                     lambda_f = []
                     for flag in '*^?:!':
                         lambda_f.append(flag == '?' or flag in flags)
-                    self.functions[name] = Function(name, 0, lambda_c, line, code, *lambda_f)
+                    self.functions[name] = Function(name, 0, lambda_c, self.line, code, *lambda_f)
                     
             else:
                 self.implicit = True
@@ -461,7 +461,7 @@ class Script:
                     self.called = True
                     cmd = cmd.split('>')
                     try: func = self.functions[cmd[0][1:]]
-                    except: raise error.UnableToRetrieveFunctionError(self.line, self.code[line-1], cmd[0][1:])
+                    except: raise error.UnableToRetrieveFunctionError(self.line, self.code[self.line-1], cmd[0][1:])
                     args = []
                     for c in cmd[1:]:
                         if c == '?':
