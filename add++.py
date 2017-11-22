@@ -43,7 +43,7 @@ def divide(x,y):
     return y / x
 
 def exponent(x,y):
-    return y * x
+    return y ** x
 
 def modulo(x,y):
     return y % x
