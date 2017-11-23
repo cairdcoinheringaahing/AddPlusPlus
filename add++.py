@@ -358,6 +358,7 @@ class Function:
             self.stack.push(*args)
         script = StackScript(self.code, args, self.stack, self.line, self.gen)
         value = script.run(*self.flags[:2])
+        self.stack = Stack()
         
         if self.flags[3]:
             print(value)
@@ -373,9 +374,9 @@ class Script:
 
         self.NILADS = r'!~&#@NPOHSQVG'
         self.MONADS = r'+-*/\^><%=R'
-        self.CONSTRUCTS = r'FWEIDL'
+        self.CONSTRUCTS = 'FWEIDL'
         
-        code = list(filter(None, code.split('\n')))
+        self.code = list(filter(None, code.split('\n')))
             
         self.called = False
         self.implicit = False
@@ -387,36 +388,46 @@ class Script:
         self.line = 0
         self.I = 0
             
-        for cmd in code:
+        for cmd in self.code:
             self.line += 1
                 
             if cmd[0] in self.CONSTRUCTS:
-                if cmd[0] == 'F':
-                    loop = cmd[1:].split(',')
-                    for _ in range(self.x):
-                        for chunk in loop:
-                            self.run_chunk(chunk)
                 if cmd[:2] == 'EX':
-                    loop = cmd[2:].split(',')
+                    loop = cmd.split(',')[1:]
                     for element in self.stored:
                         for chunk in loop:
                             self.run_chunk(chunk, x=element)
-                if cmd[:2] == 'EY':
-                    loop = cmd[1:].split(',')
+                elif cmd[:2] == 'EY':
+                    loop = cmd.split(',')[1:]
                     for element in self.stored:
                         for chunk in loop:
                             self.run_chunk(chunk, y=element)
-                if cmd[0] == 'I':
-                    loop = cmd[1:].split(',')
+                elif cmd[:2] == 'W=':
+                    loop = cmd.split(',')[1:]
+                    while self.x == self.y:
+                        for chunk in loop:
+                            self.run_chunk(chunk)
+                elif cmd[:2] == 'W!':
+                    loop = cmd.split(',')[1:]
+                    while self.x != self.y:
+                        for chunk in loop:
+                            self.run_chunk(chunk)
+                elif cmd[0] == 'F':
+                    loop = cmd.split(',')[1:]
+                    for _ in range(self.x):
+                        for chunk in loop:
+                            self.run_chunk(chunk)
+                elif cmd[0] == 'I':
+                    loop = cmd.split(',')[1:]
                     if self.x:
                         for chunk in loop:
                             self.run_chunk(chunk)
-                if cmd[0] == 'W':
-                    loop = cmd[1:].split(',')
+                elif cmd[0] == 'W':
+                    loop = cmd.split(',')[1:]
                     while self.x:
                         for chunk in loop:
                             self.run_chunk(chunk)
-                if cmd[0] == 'D':
+                elif cmd[0] == 'D':
                     cmd = cmd.split(',')
                     func_name = cmd[1]
                     func_args = cmd[2].count('@')
@@ -425,7 +436,7 @@ class Script:
                         func_flags.append(flag in cmd[2])
                     func_code = ','.join(cmd[3:])+' '
                     self.functions[func_name] = Function(func_name, func_args, func_code, self.line, code, *func_flags)
-                if cmd[0] == 'L':
+                elif cmd[0] == 'L':
                     cmd = cmd.split(',')
                     flags = cmd[0][1:]
                     lambda_c = ','.join(cmd[1:])
@@ -448,7 +459,7 @@ class Script:
                         except: acc = 0
                     elif c == 'G':
                         try: acc = self.stored.pop()
-                        except: raise error.EmptySecondStackError(self.line, code[self.line-1])
+                        except: raise error.EmptySecondStackError(self.line, self.code[self.line-1])
                     elif c == 'x': acc = self.x
                     elif c == 'y': acc = self.y
                     elif c == 'g': acc = self.stored[-1]
@@ -469,7 +480,7 @@ class Script:
                             except: args.append(0)
                         elif c == 'G':
                             try: args.append(self.stored.pop())
-                            except: raise error.EmptySecondStackError(self.line, code[self.line-1])
+                            except: raise error.EmptySecondStackError(self.line, self.code[self.line-1])
                         elif c == 'x': args.append(self.x)
                         elif c == 'y': args.append(self.y)
                         elif c == 'g': args.append(self.stored[-1])
@@ -500,7 +511,7 @@ class Script:
     def run_chunk(self, cmd, x=None, y=None):
         if x is not None: self.x = x
         if y is not None: self.y = y
-            
+
         symbol = cmd[0]
         if symbol == "_":
             for i in inputs:
@@ -510,27 +521,71 @@ class Script:
         if len(cmd) > 1: value = eval_(cmd[1:])
         else: value = None
 
-        if value is not None:
+        if cmd[:2] in ['x:', 'y:']:
+            if cmd[0] == 'x': acc = self.x; acc_n = 'x'
+            else: acc = self.y; acc_n = 'y'
+                
+            c = cmd[2:]
+            if c == '?':
+                try: acc = inputs[self.I]; self.I += 1
+                except: acc = 0
+            elif c == 'G':
+                try: acc = self.stored.pop()
+                except: raise error.EmptySecondStackError(self.line, self.code[self.line-1])
+            elif c == 'x': acc = self.x
+            elif c == 'y': acc = self.y
+            elif c == 'g': acc = self.stored[-1]
+            else: acc = eval_(c)
+                                
+            if acc_n == 'x': self.x = acc
+            if acc_n == 'y': self.y = acc
+        elif symbol == '$':
+            self.called = True
+            cmd = cmd.split('>')
+            try: func = self.functions[cmd[0][1:]]
+            except: raise error.UnableToRetrieveFunctionError(self.line, self.code[self.line-1], cmd[0][1:])
+            args = []
+            for c in cmd[1:]:
+                if c == '?':
+                    try: args.append(inputs[self.I]); self.I += 1
+                    except: args.append(0)
+                elif c == 'G':
+                    try: args.append(self.stored.pop())
+                    except: raise error.EmptySecondStackError(self.line, self.code[self.line-1])
+                elif c == 'x': args.append(self.x)
+                elif c == 'y': args.append(self.y)
+                elif c == 'g': args.append(self.stored[-1])
+                elif c == '_': args += self.stored
+                else: args.append(eval_(c))
+                    
+            value = func(*args)
+            if type(value) == Null: value = value.value
+            if type(value) == str: self.stored.append(value)
+            if type(value) == list:
+                for v in value:
+                    self.stored.append(v)
+            self.x = value
+        elif value is not None:
             if value == '?':
                 try: value = inputs[self.I];  self.I += 1
-                except: raise error.NoMoreInputError(self.line, code[self.line-1])
+                except: raise error.NoMoreInputError(self.line, self.code[self.line-1])
             if value == 'G':
                 try: value = self.stored.pop()
-                except: raise error.EmptySecondStackError(line, code[line-1])
+                except: raise error.EmptySecondStackError(line, self.code[line-1])
             if value == 'g': value = self.stored[-1]
             if value == 'x': value = self.x
             if value == 'y': value = self.y
                 
             try: self.x = self.COMMANDS[symbol](value)
-            except ZeroDivisionError: raise error.DivisionByZeroError(self.line, code[self.line-1])
-            except: raise error.InvalidSymbolError(self.line, code[self.line-1], symbol)
+            except ZeroDivisionError: raise error.DivisionByZeroError(self.line, self.code[self.line-1])
+            except: raise error.InvalidSymbolError(self.line, self.code[self.line-1], symbol)
                 
         else:
             try: v = self.COMMANDS[symbol]()
             except:
                 if symbol == '?':
                     try: v = inputs[self.I]; self.I += 1
-                    except: raise error.NoMoreInputError(self.line, code[self.line-1])
+                    except: raise error.NoMoreInputError(self.line, self.code[self.line-1])
                 else: v = None
             if v is None: return
             self.x = v
@@ -612,7 +667,7 @@ if __name__ == '__main__':
     program = sys.argv[1]
     inputs = list(map(eval_, sys.argv[2:]))
 
-    if '--error' in sys.argv[2:]:
+    if '--error' in sys.argv[2:] or True:
         if program.endswith('.txt'):
             Script(open(program).read(),inputs)
         else:
