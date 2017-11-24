@@ -181,6 +181,7 @@ class StackScript:
                 'j':lambda: self.join(str(self.stack.pop())),
                 'V':lambda: self.store(self.stack.pop()),
                 'G':lambda: self.stack.push(self.register),
+		'x':lambda: self.stack.push([self.stack[-1] for _ in range(self.stack.pop())]),
 
                 'Bx':lambda: self.stack.push(self.stack.pop() ^ self.stack.pop()),
                 'Ba':lambda: self.stack.push(self.stack.pop() & self.stack.pop()),
