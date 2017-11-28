@@ -182,6 +182,7 @@ class StackScript:
                 'V':lambda: self.store(self.stack.pop()),
                 'G':lambda: self.stack.push(self.register),
 		'x':lambda: self.stack.push([self.stack[-1] for _ in range(self.stack.pop())]),
+		'i':lambda: self.stack.push(self.stack.pop() in self.stack.pop()),
 
                 'Bx':lambda: self.stack.push(self.stack.pop() ^ self.stack.pop()),
                 'Ba':lambda: self.stack.push(self.stack.pop() & self.stack.pop()),
@@ -222,6 +223,7 @@ class StackScript:
                 'Es':lambda: Stack([sum(i) for i in self.stack]),
 		'E|':lambda: Stack([abs(i) for i in self.stack]),
 		'E_':lambda: Stack([-i for i in self.stack]),
+		'Ei':lambda: [i in self.stack[-1] for i in self.stack.pop()],
 
                 'bM':lambda: self.stack.push(max(self.stack.pop())),
                 'bm':lambda: self.stack.push(min(self.stack.pop())),
