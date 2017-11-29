@@ -223,7 +223,7 @@ class StackScript:
                 'Es':lambda: Stack([sum(i) for i in self.stack]),
 		'E|':lambda: Stack([abs(i) for i in self.stack]),
 		'E_':lambda: Stack([-i for i in self.stack]),
-		'Ei':lambda: [i in self.stack[-1] for i in self.stack.pop()],
+		'Ei':lambda: self.stack.push([i in self.stack[-1] for i in self.stack.pop()]),
 
                 'bM':lambda: self.stack.push(max(self.stack.pop())),
                 'bm':lambda: self.stack.push(min(self.stack.pop())),
