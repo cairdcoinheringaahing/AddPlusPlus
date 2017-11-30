@@ -161,7 +161,7 @@ class StackScript:
                 'h':lambda: print(self.stack),
                 'H':lambda: print(''.join(map(str, self.stack))),
                 '&':lambda: self.stack.push(self.stack.pop() and self.stack.pop()),
-                'S':lambda: self.stack.push(*self.remove_duplicates()),
+                'S':lambda: self.stack.push(self.remove_duplicates()),
                 's':lambda: self.stack.push(sum(self.stack)),
                 'F':lambda: self.stack.push(*self.factors()),
                 'f':lambda: self.stack.push(*filter(isprime, self.factors())),
@@ -223,6 +223,7 @@ class StackScript:
                 'Es':lambda: Stack([sum(i) for i in self.stack]),
 		'E|':lambda: Stack([abs(i) for i in self.stack]),
 		'E_':lambda: Stack([-i for i in self.stack]),
+		'EQ':lambda: Stack([self.remove_duplicates(i) for i in self.stack]),
 		'Ei':lambda: self.stack.push([i in self.stack[-1] for i in self.stack.pop()]),
 
                 'bM':lambda: self.stack.push(max(self.stack.pop())),
@@ -309,9 +310,10 @@ class StackScript:
     def remove(self, even_odd):
         self.stack = Stack(filter(lambda x: x%2 == int(bool(even_odd)), self.stack))
         
-    def remove_duplicates(self):
+    def remove_duplicates(self, array=None):
         final = []
-        for s in self.stack:
+	if array is None: array = self.stack
+        for s in array:
             if s not in final:
                 final.append(s)
         return final
