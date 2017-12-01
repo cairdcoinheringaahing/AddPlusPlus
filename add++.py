@@ -312,7 +312,7 @@ class StackScript:
         
     def remove_duplicates(self, array=None):
         final = []
-	if array is None: array = self.stack
+        if array is None: array = self.stack
         for s in array:
             if s not in final:
                 final.append(s)
