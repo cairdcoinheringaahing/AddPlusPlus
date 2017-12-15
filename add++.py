@@ -210,6 +210,7 @@ class StackScript:
                 'BC':lambda: self.stack.push(int(''.join(map(str, self.stack.pop())), self.stack.pop())),
                 'BR':lambda: self.stack.push(self.stack.pop()[::-1]),
                 'BF':lambda: self.flatten(),
+		'BX':lambda: self.stack.push(random.choice(self.stack.pop())),
 				
 		'E#':lambda: Stack([sorted(i) for i in self.stack]),
 		'E@':lambda: Stack([i[::-1] for i in self.stack]),
