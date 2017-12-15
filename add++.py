@@ -183,6 +183,7 @@ class StackScript:
                 'G':lambda: self.stack.push(self.register),
 		'x':lambda: self.stack.push([self.stack[-1] for _ in range(self.stack.pop())]),
 		'i':lambda: self.stack.push(self.stack.pop() in self.stack.pop()),
+		'y':lambda: [self.stack.push(self.stack[-1]) for _ in range(self.stack.pop())],
 
                 'Bx':lambda: self.stack.push(self.stack.pop() ^ self.stack.pop()),
                 'Ba':lambda: self.stack.push(self.stack.pop() & self.stack.pop()),
