@@ -231,6 +231,7 @@ class StackScript:
 		'EF':lambda: Stack([i for i in self.stack[:-1] if i not in self.stack[-1]]),
 		'Ef':lambda: Stack([i for i in self.stack[:-1] if i in self.stack[-1]]),
 		'EX':lambda: Stack([random.choice(i) for i in self.stack]),
+		'EJ':lambda: Stack([''.join(map(str, i)) for i in self.stack]),
 
                 'bM':lambda: self.stack.push(max(self.stack.pop())),
                 'bm':lambda: self.stack.push(min(self.stack.pop())),
