@@ -169,7 +169,7 @@ class StackScript:
                 '@':lambda: self.stack.reverse(),
                 '!':lambda: self.stack.push(not self.stack.pop()),
                 '#':lambda: self.stack.sort(),
-                ';':lambda: self.stack.push(self.stack.pop() * 2),
+                "'":lambda: self.stack.push(self.stack.pop() * 2),
                 '|':lambda: self.stack.push(abs(self.stack.pop())),
                 '<':lambda: self.stack.push(self.stack.pop() < self.stack.pop()),
                 '>':lambda: self.stack.push(self.stack.pop() > self.stack.pop()),
@@ -427,13 +427,22 @@ class Function:
 
 class Script:
 
+    def process(self, lines):
+        final = ['']
+        for line in lines:
+            if line.startswith(('  ', '\t')):
+                final[-1] += line.split(';')[0].strip()
+            else:
+                final.append(line.split(';')[0].strip())
+        return list(filter(None, map(lambda a: a.strip(','), final)))
+
     def __init__(self,code, inputs=()):
 
         self.NILADS = r'!~&#@NPOHSQVG'
         self.MONADS = r'+-*/\^><%=R'
         self.CONSTRUCTS = 'FWEIDL'
         
-        self.code = list(filter(None, code.split('\n')))
+        self.code = self.process(code.split('\n'))
             
         self.called = False
         self.implicit = False
