@@ -1,5 +1,4 @@
 import functools
-import inspect
 import math
 import operator
 import random
@@ -7,8 +6,6 @@ import re
 import sys
 
 import error
-
-CUSTOM_ERRORS = [m[0] for m in inspect.getmembers(error, inspect.isclass) if m[1].__module__ == 'error']
 
 def isdigit(string):
     return all(i in '1234567890-.' for i in string)
@@ -23,9 +20,9 @@ class Stack(list):
         for v in values:
             try: self.append(v.replace("'",'"'))
             except: self.append(v)
-    def pop(self,index=-1):
+    def pop(self, index=-1):
         try: return super().pop(index)
-        except: raise error.EmptyStackError()
+        except: raise error.EmptyStackError
     
     def swap(self):
         self[-1], self[-2] = self[-2], self[-1]
@@ -60,20 +57,40 @@ class Null:
 
 class StackScript:
 
-    def __init__(self, code, args, stack=Stack(), line=0, general_code=''):
+    def __init__(self, code, args, funcs, stack=Stack(), line=0, general_code=''):
         self.args = args
         self.register = args[0] if args else 0
-        self.stack = stack
-        self.code = StackScript.tokenize(code)
-        if self.code[-1] in 'BEb':
-            self.code += ' '
+        self.stacks = [stack]
+        self.index = 0
+        self.code = StackScript.tokenize(code + ' ')
+        self.prevcall = None
+        self.functions = funcs
         cont = False
         for i,cmd in enumerate(self.code):
+            while True:
+                try:
+                    self.stack = self.stacks[self.index]
+                    break
+                except:
+                    self.stacks.append(Stack())
             if cont:
                 cont -= 1
                 continue
             if cmd[0] == '"':
                 self.stack.push(cmd[1:])
+            elif cmd[0] == '{' and cmd[-1] == '}':
+                try: func = self.functions[cmd[1:-1]]
+                except: raise error.UnableToRetrieveFunctionError(line, general_code[self.line-1], cmd[1:-1])
+                feed = []
+                if func.lamb:
+                    feed.extend(list(self.stack))
+                    self.stack.clear()
+                else:
+                    while len(feed) < func.args:
+                        feed.append(self.stack.pop())
+                    feed = feed[::-1]
+                self.prevcall = func(*feed)
+                self.stack.push(self.prevcall)
             elif isdigit(cmd):
                 self.stack.push(eval_(cmd))
             else:
@@ -91,10 +108,7 @@ class StackScript:
                 except KeyError:
                     raise error.InvalidSymbolError(line, general_code[line-1], cmd)
                 except Exception as n_error:
-                    try:
-                        raise n_error(line, general_code[line-1])
-                    except Exception as e:
-                        raise error.PythonError(line, ','.join(general_code[line-1]), e)
+                    raise error.PythonError(line, ','.join(general_code[line-1]), n_error)
                 if type(result) == Stack:
                     self.stack = result
                     del result
@@ -102,18 +116,26 @@ class StackScript:
     @staticmethod
     def tokenize(text):
         final = []
-        temp = ''
+        stemp = ''
+        ctemp = ''
         num = ''
         instr = False
+        incall = False
         
         for char in text:
             if char == '"': instr = not instr
+            if char == '{': incall = True
+            if char == '}': incall = False; ctemp += '}'; continue
 		
-            if instr:temp += char
+            if instr: stemp += char
+            elif incall:ctemp += char
             else:
-                if temp:
-                    final.append(temp)
-                    temp = ''
+                if stemp:
+                    final.append(stemp)
+                    stemp = ''
+                if ctemp:
+                    final.append(ctemp)
+                    ctemp = '' 
                 if isdigit(char):
                     try:
                         if char == '-':
@@ -128,9 +150,10 @@ class StackScript:
                         num = ''
                     final.append(char)
 
-        if temp: final.append(temp)
+        if stemp: final.append(stemp)
+        if ctemp: final.append(ctemp)
         if num: final.append(num)
-        final = list(filter(lambda s: s!= '"', final))
+        final = list(filter(lambda s: s != '"', final))
         return final
     
     @property
@@ -184,6 +207,10 @@ class StackScript:
 		'x':lambda: self.stack.push([self.stack[-1] for _ in range(self.stack.pop())]),
 		'i':lambda: self.stack.push(self.stack.pop() in self.stack.pop()),
 		'y':lambda: [self.stack.push(self.stack[-1]) for _ in range(self.stack.pop())],
+                '[':lambda: self.stack.push(self.prevcall),
+                ']':lambda: self.run_lambda(self.stack.pop()),
+                ')':lambda: self.increment(),
+                '(':lambda: self.decrement(),
 
                 'Bx':lambda: self.stack.push(self.stack.pop() ^ self.stack.pop()),
                 'Ba':lambda: self.stack.push(self.stack.pop() & self.stack.pop()),
@@ -212,6 +239,8 @@ class StackScript:
                 'BR':lambda: self.stack.push(self.stack.pop()[::-1]),
                 'BF':lambda: self.flatten(),
 		'BX':lambda: self.stack.push(random.choice(self.stack.pop())),
+                'B)':lambda: self.stack.push(self.stacks[(self.index + 1) % len(self.stacks)].pop()),
+                'B(':lambda: self.stack.push(self.stacks[self.index - 1].pop()),
 				
 		'E#':lambda: Stack([sorted(i) for i in self.stack]),
 		'E@':lambda: Stack([i[::-1] for i in self.stack]),
@@ -252,6 +281,8 @@ class StackScript:
                 'bB':lambda: self.pad_bin(),
                 'bU':lambda: self.stack.push(*self.stack.pop()),
                 'bF':lambda: self.stack.push(self.flatten(self.stack.pop())),
+                'b)':lambda: self.stacks[(self.index + 1) % len(self.stacks)].push(self.stack.pop()),
+                'b(':lambda: self.stacks[self.index - 1].push(self.stack.pop()),
                }
 
     def apply(self, func):
@@ -274,6 +305,9 @@ class StackScript:
 		
     def columns(self):
         self.stack = Stack(map(list, zip(*self.stack)))
+
+    def decrement(self):
+        self.index -= 1
         
     def eq(self, *args):
         incs = [args[i] == args[i-1] for i in range(1, len(args))]
@@ -302,6 +336,9 @@ class StackScript:
        copy = flatten_array(list(self.stack))
        self.stack.clear()
        self.stack.push(*copy)
+
+    def increment(self):
+        self.index += 1
         
     def join(self, char='\n'):
         newstack = Stack()
@@ -331,6 +368,12 @@ class StackScript:
         if text:
             return ''.join(list(map(StackScript.stringify, self.stack)))
         return self.stack.pop()
+
+    def run_lambda(self, index):
+        lamb = self.functions['lambda {}'.format(index)]
+        self.prevcall = lamb(*self.stack)
+        self.stack.clear()
+        self.stack.push(self.prevcall)
         
     def store(self, value):
         self.register = value
@@ -349,14 +392,16 @@ class StackScript:
 
 class Function:
 
-    def __init__(self, name, args, code, line, g_code, *flags):
+    def __init__(self, name, args, code, line, g_code, outerf, *flags):
         self.name = name
-        self.args = args
+        self.args = args if args != -1 else 0
+        self.lamb = args == -1
         self.code = code
         self.stack = Stack()
         self.flags = list(flags)
         self.line = line
         self.gen = g_code
+        self.outerf = outerf
 
     def __call__(self, *args):
         if not self.flags[2]:
@@ -368,7 +413,7 @@ class Function:
             self.stack.push(list(args))
         else:
             self.stack.push(*args)
-        script = StackScript(self.code, args, self.stack, self.line, self.gen)
+        script = StackScript(self.code, args, self.outerf, self.stack, self.line, self.gen)
         value = script.run(*self.flags[:2])
         self.stack = Stack()
         
@@ -446,8 +491,9 @@ class Script:
                     func_flags = []
                     for flag in '*^?:!':
                         func_flags.append(flag in cmd[2])
-                    func_code = ','.join(cmd[3:])+' '
-                    self.functions[func_name] = Function(func_name, func_args, func_code, self.line, code, *func_flags)
+                    func_code = ','.join(cmd[3:])
+                    self.functions[func_name] = Function(func_name, func_args, func_code,
+                                                         self.line, code, self.functions, *func_flags)
                 elif cmd[0] == 'L':
                     cmd = cmd.split(',')
                     flags = cmd[0][1:]
@@ -457,7 +503,8 @@ class Script:
                     lambda_f = []
                     for flag in '*^?:!':
                         lambda_f.append(flag == '?' or flag in flags)
-                    self.functions[name] = Function(name, 0, lambda_c, self.line, code, *lambda_f)
+                    self.functions[name] = Function(name, -1, lambda_c, self.line,
+                                                    code, self.functions, *lambda_f)
                     
             else:
                 self.implicit = True
@@ -679,16 +726,16 @@ if __name__ == '__main__':
     program = sys.argv[1]
     inputs = list(map(eval_, sys.argv[2:]))
 
-    if '--error' in sys.argv[2:] or True:
-        if program.endswith('.txt'):
-            Script(open(program).read(),inputs)
+    if '--error' in sys.argv[2:]:
+        if program.endswith(('.txt', '.app')):
+            Script(open(program).read(), inputs)
         else:
-            Script(program,inputs)
+            Script(program, inputs)
     else:
         try:
-            if program.endswith('.txt'):
-                Script(open(program).read(),inputs)
+            if program.endswith(('.txt', '.app')):
+                Script(open(program).read(), inputs)
             else:
-                Script(program,inputs)
+                Script(program, inputs)
         except Exception as e:
             print(e, file=sys.stderr)
