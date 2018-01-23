@@ -5,13 +5,6 @@ import random
 import re
 import sys
 
-import errorimport functools
-import math
-import operator
-import random
-import re
-import sys
-
 import error
 
 def isdigit(string):
