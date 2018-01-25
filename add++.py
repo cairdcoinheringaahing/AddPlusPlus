@@ -95,7 +95,7 @@ class StackScript:
                     while len(feed) < (argcount or func.args):
                         feed.append(self.stack.pop())
                     feed = feed[::-1]
-                self.prevcall = func(*feed)
+                self.prevcall = func(*feed, funccall = True)
                 self.stack.push(self.prevcall)
             elif isdigit(cmd):
                 self.stack.push(eval_(cmd))
@@ -104,9 +104,6 @@ class StackScript:
                     if self.stack.pop():
                         cont = -1
                     continue
-                if cmd in 'BEb':
-                    cmd += self.code[i+1]
-                    cont = 1
                 try:
                     result = self.COMMANDS[cmd]()
                 except error.EmptyStackError:
@@ -116,7 +113,7 @@ class StackScript:
                 except Exception as n_error:
                     raise error.PythonError(line, ','.join(general_code[line-1]), n_error)
                 if type(result) == Stack:
-                    self.stack = result
+                    self.stacks[self.index] = result
                     del result
 
     @staticmethod
@@ -129,11 +126,11 @@ class StackScript:
         incall = False
         text = text.replace('{', ' {')
         
-        for char in text:
+        for i, char in enumerate(text):
             if char == '"': instr = not instr
             if char == '{': incall = True
             if char == '}': incall = False; ctemp += '}'; continue
-		
+	    
             if instr: stemp += char
             elif incall:ctemp += char
             else:
@@ -142,7 +139,7 @@ class StackScript:
                     stemp = ''
                 if ctemp:
                     final.append(ctemp)
-                    ctemp = '' 
+                    ctemp = ''
                 if isdigit(char):
                     try:
                         if char == '-':
@@ -160,8 +157,17 @@ class StackScript:
         if stemp: final.append(stemp)
         if ctemp: final.append(ctemp)
         if num: final.append(num)
-        final = list(filter(lambda s: s not in ['"', ' '], final))
-        return final
+        
+        tokens = []
+        for i, f in enumerate(final):
+            if f in 'BEb':
+                tokens.append(f + final.pop(i + 1))
+            elif f in '" ':
+                pass
+            else:
+                tokens.append(f)
+        
+        return tokens
     
     @property
     def COMMANDS(self):
@@ -212,8 +218,9 @@ class StackScript:
                 'V':lambda: self.store(self.stack.pop()),
                 'G':lambda: self.stack.push(self.register),
 		'x':lambda: self.stack.push([self.stack[-1] for _ in range(self.stack.pop())]),
-		'i':lambda: self.stack.push(self.stack.pop() in self.stack.pop()),
+		'e':lambda: self.stack.push(self.stack.pop() in self.stack.pop()),
 		'y':lambda: [self.stack.push(self.stack[-1]) for _ in range(self.stack.pop())],
+                'i':lambda: self.stack.push(int(self.stack.pop())),
                 '[':lambda: self.stack.push(self.prevcall),
                 ']':lambda: self.run_lambda(self.stack.pop()),
                 ')':lambda: self.increment(),
@@ -262,7 +269,8 @@ class StackScript:
 		'E|':lambda: Stack([abs(i) for i in self.stack]),
 		'E_':lambda: Stack([-i for i in self.stack]),
 		'EQ':lambda: Stack([self.remove_duplicates(i) for i in self.stack]),
-		'Ei':lambda: self.stack.push([i in self.stack[-1] for i in self.stack.pop()]),
+		'Ee':lambda: self.stack.push([i in self.stack[-1] for i in self.stack.pop()]),
+                'Ei':lambda: Stack([int(i) for i in self.stack]),
 		'EZ':lambda: Stack(filter(None, self.stack)),
 		'EF':lambda: Stack([i for i in self.stack[:-1] if i not in self.stack[-1]]),
 		'Ef':lambda: Stack([i for i in self.stack[:-1] if i in self.stack[-1]]),
@@ -293,7 +301,7 @@ class StackScript:
                }
 
     def apply(self, func):
-        self.stack = Stack(map(func, self.stack))
+        return Stack(map(func, self.stack))
         
     def collect(self):
         array = []
@@ -308,10 +316,10 @@ class StackScript:
                 sub_array.append(element)
         if sub_array:
             array.append(sub_array)
-        self.stack = Stack(array)
+        self.stacks[self.index] = Stack(array)
 		
     def columns(self):
-        self.stack = Stack(map(list, zip(*self.stack)))
+        self.stacks[self.index] = Stack(map(list, zip(*self.stack)))
 
     def decrement(self):
         self.index -= 1
@@ -350,16 +358,16 @@ class StackScript:
     def join(self, char='\n'):
         newstack = Stack()
         newstack.push(char.join(map(str, self.stack)))
-        self.stack = newstack
+        self.stacks[self.index] = newstack
 		
     def pad_bin(self):
         copy = self.stack.copy()
         length = max(map(lambda a: len(bin(a)[2:]), copy))
         for i in range(len(self.stack)):
-            self.stack[i] = Stack(map(eval_, bin(self.stack[i])[2:].rjust(length, '0')))
+            self.stacks[self.index][i] = Stack(map(eval_, bin(self.stack[i])[2:].rjust(length, '0')))
 		
     def remove(self, even_odd):
-        self.stack = Stack(filter(lambda x: x%2 == int(bool(even_odd)), self.stack))
+        self.stacks[self.index] = Stack(filter(lambda x: x%2 == int(bool(even_odd)), self.stack))
         
     def remove_duplicates(self, array=None):
         final = []
@@ -369,16 +377,13 @@ class StackScript:
                 final.append(s)
         return final
 	
-    def run(self,flag,text, debug = False):
-        try:
-            self.stack
-        except:
-            self.stack = self.stacks[0]
+    def run(self,flag,text):
+        ret = self.stacks[self.index]
         if flag:
-            return self.stack
+            return ret
         if text:
-            return ''.join(list(map(StackScript.stringify, self.stack)))
-        return self.stack.pop()
+            return ''.join(list(map(StackScript.stringify, ret)))
+        return ret.pop()
 
     def run_lambda(self, index):
         lamb = self.functions['lambda {}'.format(index)]
@@ -414,7 +419,7 @@ class Function:
         self.gen = g_code
         self.outerf = outerf
 
-    def __call__(self, *args):
+    def __call__(self, *args, funccall = False):
         if not self.flags[2]:
             args = list(args)[:self.args]
             while len(args) != self.args:
@@ -425,12 +430,15 @@ class Function:
         else:
             self.stack.push(*args)
         script = StackScript(self.code, args, self.outerf, self.stack, self.line, self.gen)
-        value = script.run(*self.flags[:2], debug = True)
+        value = script.run(*self.flags[:2])
         self.stack = Stack()
         
         if self.flags[3]:
             print(value)
-            return Null(value)
+            if funccall:
+                return value
+            else:
+                return Null(value)
         return int(value) if type(value) == bool else value
         
     def __repr__(self):
