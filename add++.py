@@ -60,7 +60,7 @@ class StackScript:
 
     def __init__(self, code, args, funcs, stack, line, outer):
         self.args = args
-        self.register = args[0] if args else 0
+        self.register = args if args else 0
         self.stacks = [stack]
         self.index = 0
         self.code = StackScript.tokenize(code + ' ')
