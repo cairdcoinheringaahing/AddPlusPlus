@@ -230,7 +230,7 @@ class StackScript:
                 'T': lambda: Null,
                 'U': lambda: Null,
                 'V': lambda: self.store(self.stack.pop()),
-                'X': lambda: Null,
+                'X': lambda: self.stack.push([[self.stack[-1] for _ in range(self.stack.pop())], self.stack.pop()][0]),
                 'Y': lambda: Null,
                 'Z': lambda: Null,
 
