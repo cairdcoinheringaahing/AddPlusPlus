@@ -24,6 +24,15 @@ class EmptySecondStackError(Exception):
         The second stack is empty, and is unable to be popped from'''.format(num, line)
 
         super(EmptySecondStackError, self).__init__(self.message)
+        
+class IncongruentTypesError(Exception):
+    def __init__(self, num, line, command):
+
+        self.message = '''Fatal error: IncongruentTypesError
+    line {}: '{}'
+        Unable to perform the command '{}' due to inconsistent type operands'''.format(num, line, command)
+
+        super(IncongruentTypesError, self).__init__(self.message)
 
 class NoMoreInputError(Exception):
     def __init__(self, num, line):
