@@ -37,7 +37,8 @@
 - **[v2.8]** : Added join each command
 
 - **[v3.0]** : Added the ability to call other functions inside functions
-- **[v3.1]** : Functions able to pop a specified amount of arguments
+- **[v3.1]** : Added comment syntax
+- **[v3.2]** : Functions able to pop a specified amount of arguments
 
 [v0.0]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/b3210742638b802179fdf014081af39e32d2c901
 [v0.1]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/f120f7624530f7c69c26e6e082d6f76f5be85b5d
@@ -76,4 +77,5 @@
 [v2.8]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/2a24d315634c691bfb570e95f17fa2b331b49c29
 
 [v3.0]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/63f41aecf54b42a3d82a20d6dace3b6a03ae68ff
-[v3.1]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/649bb9995951a7f6e818b432a16f22f8b5c6eaee
+[v3.1]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/0eb563acd178079781e773dd7f208cdf3c2833e9
+[v3.2]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/649bb9995951a7f6e818b432a16f22f8b5c6eaee
