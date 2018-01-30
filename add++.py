@@ -213,7 +213,7 @@ class StackScript:
                 'B': lambda: self.stack.push(self.stack[:self.stack.pop()]),
                 'C': lambda: self.stack.push(chr(self.stack.pop())),
                 'D': lambda: self.stack.push(self.stack[-self.stack.pop()]),
-                'E': lambda: self.stack.push(enumerate(self.stack.pop())),
+                'E': lambda: self.stack.push(list(enumerate(self.stack.pop()))),
                 'F': lambda: self.stack.push(*self.factors()),
                 'G': lambda: self.stack.push(self.register),
                 'H': lambda: print(''.join(map(str, self.stack))),
