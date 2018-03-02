@@ -330,7 +330,7 @@ class StackScript:
                 'Bg':lambda: Null,
                 'Bh':lambda: Null,
                 'Bi':lambda: self.apply(int),
-                'Bj':lambda: Null,
+                'Bj':lambda: self.apply(isprime),
                 'Bk':lambda: Null,
                 'Bl':lambda: Null,
                 'Bm':lambda: self.apply(min),
