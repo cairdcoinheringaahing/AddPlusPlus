@@ -10,6 +10,8 @@
 - **[v0.7]** : Varargs flag added
 - **[v0.8]** : Backwards compatablity broken: function calling changed to `>` instead of `,`
 
+---
+
 - **[v1.0]** : Massive changes; New commands and `Bb` prefixes
 - **[v1.1]** : Allow assignment to the **Y** accumulator
 - **[v1.2]** : Bitwise commands added
@@ -22,6 +24,8 @@
 - **[v1.9]** : Join commands added
 - **[v1.10]** : List flag added
 - **[v1.11]** : `_` allowed as a function argument
+
+---
 
 - **[v2.0]** : Lambdas created
 - **[v2.1]** : Register created
@@ -36,9 +40,18 @@
 - **[v2.7.3]** : Added flat repeat command
 - **[v2.8]** : Added join each command
 
+---
+
 - **[v3.0]** : Added the ability to call other functions inside functions
 - **[v3.1]** : Added comment syntax
 - **[v3.2]** : Functions able to pop a specified amount of arguments
+- **[v3.3.1]** : Added popping repeat command
+- **[v3.3.2]** : Added eval and exec command
+- **[v3.3.3]** : Added mapping prime command
+
+---
+
+- **[v4.0]** : Added token popping quicks, that take a function and iterate over the stack
 
 [v0.0]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/b3210742638b802179fdf014081af39e32d2c901
 [v0.1]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/f120f7624530f7c69c26e6e082d6f76f5be85b5d
@@ -79,3 +92,8 @@
 [v3.0]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/63f41aecf54b42a3d82a20d6dace3b6a03ae68ff
 [v3.1]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/0eb563acd178079781e773dd7f208cdf3c2833e9
 [v3.2]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/649bb9995951a7f6e818b432a16f22f8b5c6eaee
+[v3.3.1]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/443e5261daca219b101cb5a740744d3982854719
+[v3.3.2]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/5d650ad90181cce4aea433c0a8722d80a4ee4187
+[v3.3.3]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/4d119f80327f52acab97ec15153a1a3f7f9a92e6
+
+[v4.0]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/827f2dac44e1fddb291551ac8005f6bdd1984d3b
