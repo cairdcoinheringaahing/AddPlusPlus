@@ -1013,7 +1013,7 @@ class Script:
                 'S':self.sqrt,
                 'V':self.store,
                 'G':self.get,
-                'L':self.globalget,
+                'U':self.globalget,
                 'K':self.globalsave,
 
                 'F':self,
