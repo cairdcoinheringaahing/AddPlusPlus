@@ -1,11 +1,14 @@
-import functools
+import functools as fn
+import itertools as it
 import math
-import operator
+import operator as op
 import random
 import re
 import sys
 
 import error
+
+GLOBALREGISTER = None
 
 def isdigit(string):
     return all(i in '1234567890-.' for i in string)
@@ -18,6 +21,7 @@ def eval_(string):
 class Stack(list):
     def push(self, *values):
         for v in values:
+            if v in [True, False]: v = int(v)
             try: self.append(v.replace("'",'"'))
             except: self.append(v)
     def pop(self, index=-1):
@@ -49,8 +53,18 @@ def modulo(x,y):
 def isprime(x):
     for i in range(2,x):
         if x%i == 0:
-            return False
-    return x > 1 and isinstance(x, int)
+            return 0
+    return int(x > 1 and isinstance(x, int))
+
+def groupby(func, array):
+    groups = {}
+    results = list(map(func, array))
+    for i, value in enumerate(array):
+        if results[i] not in list(groups.keys()):
+            groups[results[i]] = [value]
+        else:
+            groups[results[i]] += [value]
+    return list(map(lambda a: a[-1], sorted(groups.items(), key = lambda a: a[0])))
 
 class Null:
     def __init__(self, value):
@@ -63,7 +77,8 @@ class StackScript:
         self.register = args if args else 0
         self.stacks = [stack]
         self.index = 0
-        self.code = StackScript.tokenize(code + ' ')
+        self.quicks = ''.join(list(self.QUICKS.keys()))
+        self.code = self.tokenize(code + ' ')
         self.prevcall = None
         self.functions = funcs
         cont = False
@@ -80,8 +95,16 @@ class StackScript:
             if cont:
                 cont -= 1
                 continue
+            
             if cmd[0] == '"':
                 self.stack.push(cmd[1:])
+            elif type(cmd) == list:
+                quick, cmd = cmd
+                if cmd[0] == '{' and cmd[-1] == '}':
+                    func = self.functions[cmd[1:-1]]
+                    self.QUICKS[quick]((func.args, func))
+                else:
+                    self.QUICKS[quick](self.COMMANDS[cmd.strip()])
             elif cmd[0] == '{' and cmd[-1] == '}':
                 
                 if cmd[1] == ',':
@@ -122,7 +145,8 @@ class StackScript:
                     continue
                 
                 try:
-                    result = self.COMMANDS[cmd]()
+                    arity, command = self.COMMANDS[cmd]
+                    result = command(*[self.stack.pop() for _ in range(arity)])
                 except TypeError:
                     raise error.IncongruentTypesError(line, outer[line-1], cmd)
                 except:
@@ -130,13 +154,11 @@ class StackScript:
                     
                 if result == Null:
                     raise error.InvalidSymbolError(line, outer[line-1], cmd)
-                
-                if type(result) == Stack:
-                    self.stacks[self.index] = result
-                    del result
 
-    @staticmethod
-    def tokenize(text):
+                if result is not None and result != []:
+                        self.stack.push(result)
+
+    def tokenize(self, text):
         final = []
         stemp = ''
         ctemp = ''
@@ -185,262 +207,290 @@ class StackScript:
                 pass
             else:
                 tokens.append(f)
-        
+
+        index = 0
+        while index < len(tokens):
+            token = tokens[index]
+            if token in self.quicks:
+                tokens[index] = [token, tokens.pop(index + 1)]
+                index += 1
+            index += 1
+
         return tokens
+
+    @property
+    def QUICKS(self):
+        return {
+                '€': self.quickeach,
+                '§': self.quicksort,
+                '«': self.quickmax,
+                '»': self.quickmin,
+                'Þ': self.quickfiltertrue,
+                'þ': self.quickfilterfalse,
+                '¦': self.quickreduce,
+                '¬': self.quickaccumulate,
+                '£': self.quickstareach,
+                'ª': self.quickall,
+                'º': self.quickany,
+                '↑': self.quicktakewhile,
+                '↓': self.quickdropwhile,
+                '¢': self.quickgroupby,
+                'Ñ': self.quickneighbours,
+               }
     
     @property
     def COMMANDS(self):
         return {
-                '!': lambda: self.stack.push(not self.stack.pop()),
-                '#': lambda: self.stack.sort(),
-                '$': lambda: self.stack.swap(),
-                '%': lambda: self.stack.push(modulo(self.stack.pop(), self.stack.pop())),
-                '&': lambda: self.stack.push(self.stack.pop() and self.stack.pop()),
-                "'": lambda: self.stack.push(self.stack.pop() * 2),
-                '(': lambda: self.decrement(),
-                ')': lambda: self.increment(),
-                '*': lambda: self.stack.push(multiply(self.stack.pop(), self.stack.pop())),
-                '+': lambda: self.stack.push(add(self.stack.pop(), self.stack.pop())),
-                '/': lambda: self.stack.push(divide(self.stack.pop(), self.stack.pop())),
-                ':': lambda: Null,
-                '<': lambda: self.stack.push(self.stack.pop() < self.stack.pop()),
-                '=': lambda: self.stack.push(self.stack.pop() == self.stack.pop()),
-                '>': lambda: self.stack.push(self.stack.pop() > self.stack.pop()),
-                '?': lambda: self.stack.push(bool(self.stack.pop())),
-                '@': lambda: self.stack.reverse(),
+                '!': (1, lambda x: not x                                ),
+                '#': (0, lambda: self.stack.sort()                      ),
+                '$': (0, lambda: self.stack.swap()                      ),
+                '%': (2, lambda x, y: modulo(x, y)                      ),
+                '&': (2, lambda x, y: x and y                           ),
+                "'": (1, lambda x: x * 2                                ),
+                '(': (0, lambda: self.decrement()                       ),
+                ')': (0, lambda: self.increment()                       ),
+                '*': (2, lambda x, y: multiply(x, y)                    ),
+                '+': (2, lambda x, y: add(x, y)                         ),
+                '/': (2, lambda x, y: divide(x, y)                      ),
+                ':': (0, lambda: Null                                   ),
+                '<': (2, lambda x, y: x < y                             ),
+                '=': (2, lambda x, y: x == y                            ),
+                '>': (2, lambda x, y: x > y                             ),
+                '?': (1, lambda x: (x > 0) - (x < 0)                    ),
+                '@': (0, lambda: self.stack.reverse()                   ),
                 
-                'A': lambda: self.stack.push(*self.args),
-                'B': lambda: self.stack.push(self.stack[:self.stack.pop()]),
-                'C': lambda: self.stack.push(chr(self.stack.pop())),
-                'D': lambda: self.stack.push(self.stack[-self.stack.pop()]),
-                'E': lambda: self.stack.push(list(map(list, enumerate(self.stack.pop())))),
-                'F': lambda: self.stack.push(*self.factors()),
-                'G': lambda: self.stack.push(self.register),
-                'H': lambda: print(''.join(map(str, self.stack))),
-                'I': lambda: Null,
-                'J': lambda: self.join(''),
-                'K': lambda: Null,
-                'L': lambda: self.stack.push(len(self.stack)),
-                'M': lambda: self.stack.push(max(self.stack)),
-                'N': lambda: self.stack.push('\n'.join(map(str, self.stack))),
-                'O': lambda: self.stack.push(ord(self.stack.pop())),
-                'P': lambda: self.stack.push(isprime(self.stack.pop())),
-                'R': lambda: self.stack.push(list(range(1, self.stack.pop()+1))),
-                'S': lambda: self.stack.push(self.remove_duplicates()),
-                'T': lambda: Null,
-                'U': lambda: Null,
-                'V': lambda: self.store(self.stack.pop()),
-                'X': lambda: self.stack.push([[self.stack[-1] for _ in range(self.stack.pop())], self.stack.pop()][0]),
-                'Y': lambda: Null,
-                'Z': lambda: Null,
+                'A': (0, lambda: self.stack.push(*self.args)            ),
+                'B': (1, lambda x: self.stack[:x]                       ),
+                'C': (1, lambda x: chr(x)                               ),
+                'D': (1, lambda x: self.stack[-x]                       ),
+                'E': (1, lambda x: list(map(list, enumerate(x)))        ),
+                'F': (0, lambda: self.stack.push(*self.factors())       ),
+                'G': (0, lambda: self.stack.push(self.register)         ),
+                'H': (0, lambda: print(''.join(map(str, self.stack)))   ),
+                'I': (0, lambda: Null                                   ),
+                'J': (0, lambda: self.join('')                          ),
+                'K': (0, lambda: Null                                   ),
+                'L': (0, lambda: len(self.stack)                        ),
+                'M': (0, lambda: max(self.stack)                        ),
+                'N': (0, lambda: '\n'.join(map(str, self.stack))        ),
+                'O': (1, lambda x: ord(x)                               ),
+                'P': (1, lambda x: isprime(x)                           ),
+                'R': (1, lambda x: list(range(1, x+1))                  ),
+                'S': (0, lambda: self.remove_duplicates()               ),
+                'T': (0, lambda: Null                                   ),
+                'U': (0, lambda: Null                                   ),
+                'V': (1, lambda x: self.store(x)                        ),
+                'X': (2, lambda x, y: [x for _ in range(y)]             ),
+                'Y': (0, lambda: Null                                   ),
+                'Z': (0, lambda: Null                                   ),
 
-                '[': lambda: self.stack.push(self.prevcall),
-                ']': lambda: self.run_lambda(self.stack.pop()),
-                '^': lambda: self.stack.push(exponent(self.stack.pop(), self.stack.pop())),
-                '_': lambda: self.stack.push(subtract(self.stack.pop(), self.stack.pop())),
-                '`': lambda: Null,
-                
-                'a': lambda: self.stack.push(list(self.args)),
-                'b': lambda: Null,
-                'c': lambda: self.stack.clear(),
-                'd': lambda: self.stack.push(self.stack[-1]),
-                'e': lambda: self.stack.push(self.stack.pop() in self.stack.pop()),
-                'f': lambda: self.stack.push(*filter(isprime, self.factors())),
-                'g': lambda: Null,
-                'h': lambda: print(self.stack),
-                'i': lambda: self.stack.push(int(self.stack.pop())),
-                'j': lambda: self.join(str(self.stack.pop())),
-                'k': lambda: Null,
-                'l': lambda: Null,
-                'm': lambda: self.stack.push(min(self.stack)),
-                'n': lambda: self.join(),
-                'o': lambda: self.stack.push(self.stack.pop() or self.stack.pop()),
-                'p': lambda: self.stack.pop(),
-                'q': lambda: self.stack.push(set(self.stack.pop())),
-                'r': lambda: self.stack.push(list(range(self.stack.pop(), self.stack.pop()))),
-                's': lambda: self.stack.push(sum(self.stack)),
-                't': lambda: Null,
-                'u': lambda: Null,
-                'v': lambda: self.stack.push(eval(self.stack.pop())),
-                'w': lambda: Null,
-		'x': lambda: self.stack.push([self.stack[-1] for _ in range(self.stack.pop())]),
-		'y': lambda: [self.stack.push(self.stack[-1]) for _ in range(self.stack.pop())],
-                'z': lambda: Null,
-                
-                '|': lambda: self.stack.push(abs(self.stack.pop())),
-                '~': lambda: Null,
+                '[': (0, lambda: self.prevcall                          ),
+                ']': (1, lambda x: self.run_lambda(x)                   ),
+                '^': (2, lambda x, y: exponent(x, y)                    ),
+                '_': (2, lambda x, y: subtract(x, y)                    ),
+                '`': (0, lambda: Null                                   ),
 
-                'B!':lambda: self.apply(operator.not_),
-                'B#':lambda: self.apply(sorted),
-                'B$':lambda: Null,
-                'B%':lambda: self.apply(lambda l: functools.reduce(operator.mod, l)),
-                'B&':lambda: self.apply(lambda l: functools.reduce(operator.and_, l)),
-                "B'":lambda: self.apply(lambda x: 2 * x),
-                'B(':lambda: self.stack.push(self.stacks[self.index - 1].pop()),
-                'B)':lambda: self.stack.push(self.stacks[(self.index + 1) % len(self.stacks)].pop()),
-                'B*':lambda: self.apply(lambda l: functools.reduce(operator.mul, l)),
-                'B+':lambda: self.apply(lambda l: functools.reduce(operator.add, l)),
-                'B/':lambda: self.apply(lambda l: functools.reduce(operator.truediv, l)),
-                'B:':lambda: Null,
-                'B<':lambda: Null,
-                'B=':lambda: self.apply(lambda l: self.eq(*l)),
-                'B>':lambda: Null,
-                'B?':lambda: Null,
-                'B@':lambda: self.apply(reversed, True),
+                'a': (0, lambda: list(self.args)                        ),
+                'b': (0, lambda: Null                                   ),
+                'c': (0, lambda: self.stack.clear()                     ),
+                'd': (0, lambda: self.stack[-1]                         ),
+                'e': (2, lambda x, y: x in y                            ),
+                'f': (0, lambda: list(filter(isprime, self.factors()))  ),
+                'g': (0, lambda: Null                                   ),
+                'h': (0, lambda: print(self.stack)                      ),
+                'i': (1, lambda x: int(x)                               ),
+                'j': (1, lambda x: self.join(str(x))                    ),
+                'k': (0, lambda: Null                                   ),
+                'l': (0, lambda: Null                                   ),
+                'm': (0, lambda: min(self.stack)                        ),
+                'n': (0, lambda: self.join()                            ),
+                'o': (2, lambda x, y: x or y                            ),
+                'p': (0, lambda: self.stack.pop()                       ),
+                'q': (1, lambda x: set(x)                               ),
+                'r': (2, lambda x, y: list(range(x, y))                 ),
+                's': (0, lambda: sum(self.stack)                        ),
+                't': (0, lambda: Null                                   ),
+                'u': (0, lambda: Null                                   ),
+                'v': (1, lambda x: eval(x)                              ),
+                'w': (0, lambda: Null                                   ),
+		'x': (1, lambda x: [self.stack[-1] for _ in range(x)]   ),
+		'y': (1, lambda x: [self.stack.push(self.stack[-1]) for _ in range(x)][:0]          ),
+                'z': (0, lambda: Null                                   ),
                 
-                'BA':lambda: self.apply(abs),
-                'BB':lambda: self.stack.push(bin(self.stack.pop())[2:]),
-                'BC':lambda: self.collect(),
-                'BD':lambda: self.apply(lambda i: list(map(int, str(i)))),
-                'BE':lambda: self.apply(lambda i: i in self.stack[-1]),
-                'BF':lambda: self.flatten(),
-                'BG':lambda: Null,
-                'BH':lambda: Null,
-                'BI':lambda: Null,
-                'BJ':lambda: self.apply(lambda i: ''.join(map(str, i))),
-                'BK':lambda: Null,
-                'BL':lambda: self.apply(len),
-                'BM':lambda: self.apply(max),
-                'BN':lambda: Null,
-                'BO':lambda: Null,
-                'BP':lambda: self.apply(lambda x: x[1:]),
-                'BQ':lambda: self.apply(self.remove_duplicates),
-                'BR':lambda: self.apply(lambda x: list(range(1, x + 1))),
-                'BS':lambda: Stack([self.stack[i : i+2] for i in range(len(self.stack) - 1)]),
-                'BT':lambda: Null,
-                'BU':lambda: Null,
-                'BV':lambda: self.stack.push(exec(self.stack.pop())),
-                'BW':lambda: Stack([i for i in self.stack[:-1] if i not in self.stack[-1]]),
-                'BX':lambda: self.stack.push(random.choice(self.stack.pop())),
-                'BY':lambda: self.apply(random.choice),
-                'BZ':lambda: Stack(filter(None, self.stack)),
+                '|': (1, lambda x: abs(x)                               ),
+                '~': (0, lambda: Null                                   ),
 
-                'B]':lambda: self.wrap(),
-                'B[':lambda: self.apply(lambda l: [l]),
-                'B^':lambda: self.apply(lambda l: functools.reduce(operator.xor, l)),
-                'B_':lambda: self.apply(lambda l: functools.reduce(operator.sub, l)),
-                'B`':lambda: self.apply(lambda l: functools.reduce(operator.pow, l)),
+                'B!':(0, lambda: self.a(operator.not_)                  ),
+                'B#':(0, lambda: self.a(sorted)                         ),
+                'B$':(0, lambda: Null                                   ),
+                'B%':(0, lambda: self.a(lambda l: fn.reduce(op.mod, l)) ),
+                'B&':(0, lambda: self.a(lambda l: fn.reduce(op.and_, l))),
+                "B'":(0, lambda: self.a(lambda x: 2 * x)                ),
+                'B(':(0, lambda: self.stacks[self.index - 1].pop()      ),
+                'B)':(0, lambda: self.stacks[(self.index + 1) % len(self.stacks)].pop()             ),
+                'B*':(0, lambda: self.a(lambda l: fn.reduce(op.mul, l)) ),
+                'B+':(0, lambda: self.a(lambda l: fn.reduce(op.add, l)) ),
+                'B/':(0, lambda: self.a(lambda l: fn.reduce(op.truediv, l))                         ),
+                'B:':(0, lambda: Null                                   ),
+                'B<':(0, lambda: Null                                   ),
+                'B=':(0, lambda: self.a(lambda l: self.eq(*l))          ),
+                'B>':(0, lambda: Null                                   ),
+                'B?':(0, lambda: Null                                   ),
+                'B@':(0, lambda: self.a(reversed, True)                 ),
+                
+                'BA':(0, lambda: self.a(abs)                            ),
+                'BB':(1, lambda x: bin(x)[2:]                           ),
+                'BC':(0, lambda: self.collect()                         ),
+                'BD':(0, lambda: self.a(lambda i: list(map(int, str(i))))                           ),
+                'BE':(0, lambda: self.a(lambda i: i in self.stack[-1])  ),
+                'BF':(0, lambda: self.flatten()                         ),
+                'BG':(0, lambda: Null                                   ),
+                'BH':(0, lambda: Null                                   ),
+                'BI':(0, lambda: Null                                   ),
+                'BJ':(0, lambda: self.a(lambda i: ''.join(map(str, i))) ),
+                'BK':(0, lambda: GLOBALREGISTER                         ),
+                'BL':(0, lambda: self.a(len)                            ),
+                'BM':(0, lambda: self.a(max)                            ),
+                'BN':(0, lambda: Null                                   ),
+                'BO':(0, lambda: Null                                   ),
+                'BP':(0, lambda: self.a(lambda x: x[1:])                ),
+                'BQ':(0, lambda: self.a(self.remove_duplicates)         ),
+                'BR':(0, lambda: self.a(lambda x: list(range(1, x + 1)))),
+                'BS':(0, lambda: Stack([self.stack[i : i+2] for i in range(len(self.stack) - 1)])   ),
+                'BT':(0, lambda: Null                                   ),
+                'BU':(0, lambda: Null                                   ),
+                'BV':(1, lambda x: exec(x)                              ),
+                'BW':(0, lambda: Stack([i for i in self.stack[:-1] if i not in self.stack[-1]])     ),
+                'BX':(1, lambda x: random.choice(x)                     ),
+                'BY':(0, lambda: self.a(random.choice)                  ),
+                'BZ':(0, lambda: Stack(filter(None, self.stack))        ),
 
-                'Ba':lambda: self.stack.push(self.stack.pop() & self.stack.pop()),
-                'Bb':lambda: self.stack.push(int(self.stack.pop(), self.stack.pop())),
-                'Bc':lambda: self.columns(),
-                'Bd':lambda: self.apply(lambda l: functools.reduce(operator.floordiv, l)),
-                'Be':lambda: self.stack.push([i in self.stack[-1] for i in self.stack.pop()]),
-                'Bf':lambda: self.stack.push(~self.stack.pop()),
-                'Bg':lambda: Null,
-                'Bh':lambda: Null,
-                'Bi':lambda: self.apply(int),
-                'Bj':lambda: self.apply(isprime),
-                'Bk':lambda: Null,
-                'Bl':lambda: Null,
-                'Bm':lambda: self.apply(min),
-                'Bn':lambda: self.apply(lambda i: -i),
-                'Bo':lambda: self.stack.push(self.stack.pop() | self.stack.pop()),
-                'Bp':lambda: self.apply(lambda x: x[:-1]),
-                'Bq':lambda: Null,
-                'Br':lambda: Null,
-                'Bs':lambda: self.apply(sum),
-                'Bt':lambda: Null,
-                'Bu':lambda: Null,
-                'Bv':lambda: self.apply(lambda i: int(''.join(map(str, i)))),
-                'Bw':lambda: Stack([i for i in self.stack[:-1] if i in self.stack[-1]]),
-                'Bx':lambda: self.stack.push(self.stack.pop() ^ self.stack.pop()),
-                'By':lambda: Null,
-                'Bz':lambda: Null,
-                
-                'B|':lambda: self.apply(lambda l: functools.reduce(operator.or_, l)),
-                'B~':lambda: self.apply(operator.inv),
-                
-                'b!':lambda: self.stack.push(list(map(operator.not_, self.stack.pop()))),
-                'b#':lambda: Null,
-                'b$':lambda: Null,
-                'b%':lambda: self.stack.push(functools.reduce(operator.mod, self.stack.pop())),
-                'b&':lambda: self.stack.push(functools.reduce(operator.and_, self.stack.pop())),
-                "b'":lambda: self.stack.push([i * 2 for i in self.stack.pop()]),
-                'b(':lambda: self.stacks[self.index - 1].push(self.stack.pop()),
-                'b)':lambda: self.stacks[(self.index + 1) % len(self.stacks)].push(self.stack.pop()),
-                'b*':lambda: self.stack.push(functools.reduce(operator.mul, self.stack.pop())),
-                'b+':lambda: self.stack.push(functools.reduce(operator.add, self.stack.pop())),
-                'b/':lambda: self.stack.push(functools.reduce(operator.truediv, self.stack.pop())),
-                'b:':lambda: Null,
-                'b<':lambda: Null,
-                'b=':lambda: self.stack.push(self.eq(*self.stack.pop())),
-                'b>':lambda: Null,
-                'b?':lambda: Null,
-                'b@':lambda: Null,
+                'B]':(0, lambda: self.wrap()                            ),
+                'B[':(0, lambda: self.a(lambda l: [l])                  ),
+                'B^':(0, lambda: self.a(lambda l: fn.reduce(op.xor, l)) ),
+                'B_':(0, lambda: self.a(lambda l: fn.reduce(op.sub, l)) ),
+                'B`':(0, lambda: self.a(lambda l: fn.reduce(op.pow, l)) ),
 
-                'bA':lambda: Null,
-                'bB':lambda: Null,
-                'bC':lambda: Null,
-                'bD':lambda: Null,
-                'bE':lambda: Null,
-                'bF':lambda: self.stack.push(self.flatten(self.stack.pop())),
-                'bG':lambda: Null,
-                'bH':lambda: Null,
-                'bI':lambda: Null,
-                'bJ':lambda: Null,
-                'bK':lambda: Null,
-                'bL':lambda: self.stack.push(len(self.stack.pop())),
-                'bM':lambda: self.stack.push(max(self.stack.pop())),
-                'bN':lambda: Null,
-                'bO':lambda: Null,
-                'bP':lambda: Null,
-                'bQ':lambda: Null,
-                'bR':lambda: self.stack.push(self.stack.pop()[::-1]),
-                'bS':lambda: Null,
-                'bT':lambda: Null,
-                'bU':lambda: self.stack.push(*self.stack.pop()),
-                'bV':lambda: Null,
-                'bW':lambda: Null,
-                'bX':lambda: Null,
-                'bY':lambda: Null,
-                'bZ':lambda: Null,
+                'Ba':(2, lambda x, y: x & y                             ),
+                'Bb':(2, lambda: int(x, y)                              ),
+                'Bc':(0, lambda: self.columns()                         ),
+                'Bd':(0, lambda: self.a(lambda l: fn.reduce(op.floordiv, l))                        ),
+                'Be':(1, lambda x: [i in self.stack[-1] for i in x]     ),
+                'Bf':(1, lambda x: ~x                                   ),
+                'Bg':(0, lambda: Null                                   ),
+                'Bh':(0, lambda: Null                                   ),
+                'Bi':(0, lambda: self.a(int)                            ),
+                'Bj':(0, lambda: self.a(isprime)                        ),
+                'Bk':(1, lambda x: self.assign(x)                       ),
+                'Bl':(0, lambda: Null                                   ),
+                'Bm':(0, lambda: self.a(min)                            ),
+                'Bn':(0, lambda: self.a(lambda i: -i)                   ),
+                'Bo':(2, lambda x, y: x | y                             ),
+                'Bp':(0, lambda: self.a(lambda x: x[:-1])               ),
+                'Bq':(0, lambda: Null                                   ),
+                'Br':(0, lambda: Null                                   ),
+                'Bs':(0, lambda: self.a(sum)                            ),
+                'Bt':(0, lambda: Null                                   ),
+                'Bu':(0, lambda: Null                                   ),
+                'Bv':(0, lambda: self.a(lambda i: int(''.join(map(str, i))))                        ),
+                'Bw':(0, lambda: Stack([i for i in self.stack[:-1] if i in self.stack[-1]])         ),
+                'Bx':(2, lambda x, y: x ^ y                             ),
+                'By':(0, lambda: Null                                   ),
+                'Bz':(0, lambda: Null                                   ),
+                
+                'B|':(0, lambda: self.a(lambda l: fn.reduce(op.or_, l)) ),
+                'B~':(0, lambda: self.a(op.inv)                         ),
+                
+                'b!':(1, lambda x: list(map(lambda a: int(not a), x))   ),
+                'b#':(0, lambda: Null                                   ),
+                'b$':(0, lambda: Null                                   ),
+                'b%':(1, lambda x: fn.reduce(op.mod, x)                 ),
+                'b&':(1, lambda x: fn.reduce(op.and_, x)                ),
+                "b'":(1, lambda x: [i * 2 for i in x]                   ),
+                'b(':(1, lambda x: self.stacks[self.index - 1].push(x)  ),
+                'b)':(1, lambda x: self.stacks[(self.index + 1) % len(self.stacks)].push(x)         ),
+                'b*':(1, lambda x: fn.reduce(op.mul, x)                 ),
+                'b+':(1, lambda x: fn.reduce(op.add, x)                 ),
+                'b/':(1, lambda x: fn.reduce(op.truediv, x)             ),
+                'b:':(0, lambda: Null                                   ),
+                'b<':(0, lambda: Null                                   ),
+                'b=':(1, lambda x: self.eq(*x)                          ),
+                'b>':(0, lambda: Null                                   ),
+                'b?':(0, lambda: Null                                   ),
+                'b@':(0, lambda: Null                                   ),
 
-                'b[':lambda: Null,
-                'b]':lambda: self.stack.push([self.stack.pop()]),
-                'b^':lambda: self.stack.push(functools.reduce(operator.xor, self.stack.pop())),
-                'b_':lambda: self.stack.push(functools.reduce(operator.sub, self.stack.pop())),
-                'b`':lambda: self.stack.push(functools.reduce(operator.pow, self.stack.pop())),
+                'bA':(0, lambda: Null                                   ),
+                'bB':(0, lambda: Null                                   ),
+                'bC':(0, lambda: Null                                   ),
+                'bD':(0, lambda: Null                                   ),
+                'bE':(0, lambda: Null                                   ),
+                'bF':(1, lambda x: self.flatten(x)                      ),
+                'bG':(0, lambda: Null                                   ),
+                'bH':(0, lambda: Null                                   ),
+                'bI':(0, lambda: Null                                   ),
+                'bJ':(0, lambda: Null                                   ),
+                'bK':(0, lambda: Null                                   ),
+                'bL':(1, lambda x: len(x)                               ),
+                'bM':(1, lambda x: max(x)                               ),
+                'bN':(0, lambda: Null                                   ),
+                'bO':(0, lambda: Null                                   ),
+                'bP':(0, lambda: Null                                   ),
+                'bQ':(0, lambda: Null                                   ),
+                'bR':(1, lambda x: x[::-1]                              ),
+                'bS':(0, lambda: Null                                   ),
+                'bT':(0, lambda: Null                                   ),
+                'bU':(1, lambda x: self.stack.push(*x)                  ),
+                'bV':(1, lambda x: self.selfexec(x)                     ),
+                'bW':(0, lambda: Null                                   ),
+                'bX':(0, lambda: Null                                   ),
+                'bY':(0, lambda: Null                                   ),
+                'bZ':(0, lambda: Null                                   ),
 
-                'ba':lambda: Null,
-                'bb':lambda: Null,
-                'bc':lambda: Null,
-                'bd':lambda: self.stack.push(functools.reduce(operator.floordiv, self.stack.pop())),
-                'be':lambda: Null,
-                'bf':lambda: Null,
-                'bg':lambda: Null,
-                'bh':lambda: Null,
-                'bi':lambda: Null,
-                'bj':lambda: Null,
-                'bk':lambda: Null,
-                'bl':lambda: Null,
-                'bm':lambda: self.stack.push(min(self.stack.pop())),
-                'bn':lambda: Null,
-                'bo':lambda: Null,
-                'bp':lambda: Null,
-                'bq':lambda: Null,
-                'br':lambda: Null,
-                'bs':lambda: Null,
-                'bt':lambda: Null,
-                'bu':lambda: Null,
-                'bv':lambda: Null,
-                'bw':lambda: Null,
-                'bx':lambda: Null,
-                'by':lambda: Null,
-                'bz':lambda: Null,
-                
-                'b|':lambda: self.stack.push(functools.reduce(operator.or_, self.stack.pop())),
-                'b~':lambda: self.stack.push(list(map(operator.inv, self.stack.pop()))),
-                
-                
+                'b[':(0, lambda: Null                                   ),
+                'b]':(1, lambda x: [x]                                  ),
+                'b^':(1, lambda x: fn.reduce(op.xor, x)                 ),
+                'b_':(1, lambda x: fn.reduce(op.sub, x)                 ),
+                'b`':(1, lambda x: fn.reduce(op.pow, x)                 ),
 
+                'ba':(0, lambda: Null                                   ),
+                'bb':(0, lambda: Null                                   ),
+                'bc':(0, lambda: Null                                   ),
+                'bd':(1, lambda x: fn.reduce(op.floordiv, x)            ),
+                'be':(0, lambda: Null                                   ),
+                'bf':(0, lambda: Null                                   ),
+                'bg':(0, lambda: Null                                   ),
+                'bh':(0, lambda: Null                                   ),
+                'bi':(0, lambda: Null                                   ),
+                'bj':(0, lambda: Null                                   ),
+                'bk':(0, lambda: Null                                   ),
+                'bl':(0, lambda: Null                                   ),
+                'bm':(1, lambda x: min(x)                               ),
+                'bn':(0, lambda: Null                                   ),
+                'bo':(0, lambda: Null                                   ),
+                'bp':(0, lambda: Null                                   ),
+                'bq':(0, lambda: Null                                   ),
+                'br':(0, lambda: Null                                   ),
+                'bs':(0, lambda: Null                                   ),
+                'bt':(0, lambda: Null                                   ),
+                'bu':(0, lambda: Null                                   ),
+                'bv':(0, lambda: Null                                   ),
+                'bw':(0, lambda: Null                                   ),
+                'bx':(0, lambda: Null                                   ),
+                'by':(0, lambda: Null                                   ),
+                'bz':(0, lambda: Null                                   ),
                 
+                'b|':(1, lambda x: fn.reduce(op.or_, x)                 ),
+                'b~':(1, lambda x: list(map(op.inv, x))                 ),
                }
 
-    def apply(self, func, array = False):
+    def a(self, func, array = False):
         if array:
-            return Stack(map(lambda v: list(func(v)), self.stack))
-        return Stack(map(func, self.stack))
+            self.stacks[self.index] = Stack(map(lambda v: list(func(v)), self.stack))
+        self.stacks[self.index] = Stack(map(func, self.stack))
+
+    def assign(self, value):
+        global GLOBALREGISTER
+        GLOBALREGISTER = value
         
     def collect(self):
         array = []
@@ -504,6 +554,114 @@ class StackScript:
         length = max(map(lambda a: len(bin(a)[2:]), copy))
         for i in range(len(self.stack)):
             self.stacks[self.index][i] = Stack(map(eval_, bin(self.stack[i])[2:].rjust(length, '0')))
+
+    def quickaccumulate(self, cmd):
+        arity, cmd = cmd
+        self.stacks[self.index] = Stack(it.accumulate(self.stack, cmd))
+
+    def quickall(self, cmd):
+        arity, cmd = cmd
+        if arity == 2:
+            right = self.stack.pop()
+            self.stack.push(all(map(cmd, it.repeat(right), self.stack)))
+        if arity == 1:
+            self.stack.push(all(map(cmd, self.stack)))
+
+    def quickany(self, cmd):
+        arity, cmd = cmd
+        if arity == 2:
+            right = self.stack.pop()
+            self.stack.push(any(map(cmd, it.repeat(right), self.stack)))
+        if arity == 1:
+            self.stack.push(any(map(cmd, self.stack)))
+
+    def quickdropwhile(self, cmd):
+        arity, cmd = cmd
+        if arity == 2:
+            right = self.stack.pop()
+            self.stacks[self.index] = Stack(it.dropwhile(lambda v: cmd(right, v), self.stack))
+        if arity == 1:
+            self.stacks[self.index] = Stack(it.dropwhile(cmd, self.stack))
+
+    def quickeach(self, cmd):
+        arity, cmd = cmd
+        if arity == 2:
+            right = self.stack.pop()
+            self.stacks[self.index] = Stack(map(cmd, it.repeat(right), self.stack))
+        if arity == 1:
+            self.stacks[self.index] = Stack(map(cmd, self.stack))
+
+    def quickfilterfalse(self, cmd):
+        arity, cmd = cmd
+        if arity == 2:
+            right = self.stack.pop()
+            self.stacks[self.index] = Stack(it.filterfalse(lambda v: cmd(right, v), self.stack))
+        if arity == 1:
+            self.stacks[self.index] = Stack(it.filterfalse(cmd, self.stack))
+
+    def quickfiltertrue(self, cmd):
+        arity, cmd = cmd
+        if arity == 2:
+            right = self.stack.pop()
+            self.stacks[self.index] = Stack(filter(lambda v: cmd(right, v), self.stack))
+        if arity == 1:
+            self.stacks[self.index] = Stack(filter(cmd, self.stack))
+
+    def quickgroupby(self, cmd):
+        arity, cmd = cmd
+        if arity == 2:
+            right = self.stack.pop()
+            self.stacks[self.index] = Stack(groupby(lambda a: cmd(right, a), self.stack))
+        if arity == 1:
+            self.stacks[self.index] = Stack(groupby(cmd, self.stack))
+
+    def quickmax(self, cmd):
+        arity, cmd = cmd
+        if arity == 2:
+            right = self.stack.pop()
+            self.stack.push(max(self.stack, key = lambda v: cmd(v, right)))
+        if arity == 1:
+            self.stack.push(max(self.stack, key = cmd))
+
+    def quickmin(self, cmd):
+        arity, cmd = cmd
+        if arity == 2:
+            right = self.stack.pop()
+            self.stack.push(min(self.stack, key = lambda v: cmd(v, right)))
+        if arity == 1:
+            self.stack.push(min(self.stack, key = cmd))
+
+    def quickneighbours(self, cmd):
+        arity, cmd = cmd
+        sublists = [self.stack[i:i+2] for i in range(len(self.stack) - 1)]
+        if arity == 2:
+            self.stacks[self.index] = Stack([cmd(*sub) for sub in sublists])
+        if arity == 1:
+            self.stacks[self.index] = Stack([cmd(sub) for sub in sublists])
+
+    def quickreduce(self, cmd):
+        arity, cmd = cmd
+        self.stack.push(fn.reduce(cmd, self.stack))
+
+    def quicksort(self, cmd):
+        arity, cmd = cmd
+        if arity == 2:
+            right = self.stack.pop()
+            self.stacks[self.index] = Stack(sorted(self.stack, key = lambda v: cmd(right, v)))
+        if arity == 1:
+            self.stacks[self.index] = Stack(sorted(self.stack, key = cmd))
+
+    def quickstareach(self, cmd):
+        arity, cmd = cmd
+        self.stacks[self.index] = Stack(it.starmap(cmd, self.stack))
+
+    def quicktakewhile(self, cmd):
+        arity, cmd = cmd
+        if arity == 2:
+            right = self.stack.pop()
+            self.stacks[self.index] = Stack(it.takewhile(lambda v: cmd(right, v), self.stack))
+        if arity == 1:
+            self.stacks[self.index] = Stack(it.takewhile(cmd, self.stack))
 		
     def remove(self, even_odd):
         self.stacks[self.index] = Stack(filter(lambda x: x%2 == int(bool(even_odd)), self.stack))
@@ -529,6 +687,13 @@ class StackScript:
         self.prevcall = lamb(*self.stack)
         self.stack.clear()
         self.stack.push(self.prevcall)
+
+    def selfexec(self, code):
+        if type(code) == int:
+            code = chr(code)
+        if type(code) == list:
+            code = ''.join(map(str, code))
+        print(code)
         
     def store(self, value):
         self.register = value
@@ -599,7 +764,8 @@ class Script:
         self.NILADS = r'!~&#@NPOHSQVG'
         self.MONADS = r'+-*/\^><%=R'
         self.CONSTRUCTS = 'FWEIDL'
-        
+
+        # print('', *zip(code, list(map(ord, code))), '', sep = '\n')
         self.code = self.process(code.split('\n'))
             
         self.called = False
@@ -611,6 +777,7 @@ class Script:
         self.x = 0
         self.line = 0
         self.I = 0
+        self.inputs = inputs
             
         for cmd in self.code:
             self.line += 1
@@ -681,7 +848,7 @@ class Script:
                         
                     c = cmd[2:]
                     if c == '?':
-                        try: acc = inputs[self.I]; self.I += 1
+                        try: acc = self.inputs[self.I]; self.I += 1
                         except: acc = 0
                     elif c == 'G':
                         try: acc = self.stored.pop()
@@ -702,7 +869,7 @@ class Script:
                     args = []
                     for c in cmd[1:]:
                         if c == '?':
-                            try: args.append(inputs[self.I]); self.I += 1
+                            try: args.append(self.inputs[self.I]); self.I += 1
                             except: args.append(0)
                         elif c == 'G':
                             try: args.append(self.stored.pop())
@@ -726,7 +893,7 @@ class Script:
                     
         if not self.called and self.functions:
             func = self.functions[list(self.functions.keys())[0]]
-            if self.I < len(inputs): result = func(*inputs[self.I:])
+            if self.I < len(self.inputs): result = func(*self.inputs[self.I:])
             elif self.x:
                 if self.y: result = func(self.x, self.y)
                 else: result = func(self.x)
@@ -740,7 +907,7 @@ class Script:
 
         symbol = cmd[0]
         if symbol == "_":
-            for i in inputs:
+            for i in self.inputs:
                 self.stored.append(i)
         if symbol == '}': self.x, self.y = self.y, self.x
             
@@ -753,7 +920,7 @@ class Script:
                 
             c = cmd[2:]
             if c == '?':
-                try: acc = inputs[self.I]; self.I += 1
+                try: acc = self.inputs[self.I]; self.I += 1
                 except: acc = 0
             elif c == 'G':
                 try: acc = self.stored.pop()
@@ -773,7 +940,7 @@ class Script:
             args = []
             for c in cmd[1:]:
                 if c == '?':
-                    try: args.append(inputs[self.I]); self.I += 1
+                    try: args.append(self.inputs[self.I]); self.I += 1
                     except: args.append(0)
                 elif c == 'G':
                     try: args.append(self.stored.pop())
@@ -793,7 +960,7 @@ class Script:
             self.x = value
         elif value is not None:
             if value == '?':
-                try: value = inputs[self.I];  self.I += 1
+                try: value = self.inputs[self.I];  self.I += 1
                 except: raise error.NoMoreInputError(self.line, self.code[self.line-1])
             if value == 'G':
                 try: value = self.stored.pop()
@@ -810,7 +977,7 @@ class Script:
             try: v = self.COMMANDS[symbol]()
             except:
                 if symbol == '?':
-                    try: v = inputs[self.I]; self.I += 1
+                    try: v = self.inputs[self.I]; self.I += 1
                     except: raise error.NoMoreInputError(self.line, self.code[self.line-1])
                 else: v = None
             if v is None: return
@@ -846,6 +1013,8 @@ class Script:
                 'S':self.sqrt,
                 'V':self.store,
                 'G':self.get,
+                'L':self.globalget,
+                'K':self.globalsave,
 
                 'F':self,
                 'I':self,
@@ -875,6 +1044,12 @@ class Script:
     def sqrt(self):          return math.sqrt(self.x)
     def store(self):         self.stored.append(self.x)
     def get(self):           self.x = self.stored.pop()
+
+    def globalsave(self):
+        global GLOBALREGISTER
+        GLOBALREGISTER = self.x
+        
+    def globalget(self):     self.x = GLOBALREGISTER
         
     def _print(self):
         if self.string: print(end=self.string)
@@ -888,6 +1063,7 @@ class Script:
         if y > self.x: return random.randint(self.x, y)
         return random.randint(y, self.x)
 
+
 if __name__ == '__main__':
 
     program = sys.argv[1]
@@ -895,13 +1071,13 @@ if __name__ == '__main__':
 
     if '--error' in sys.argv[2:]:
         if program.endswith(('.txt', '.app')):
-            Script(open(program).read(), inputs)
+            Script(open(program, encoding = 'utf-8').read(), inputs)
         else:
             Script(program, inputs)
     else:
         try:
             if program.endswith(('.txt', '.app')):
-                Script(open(program).read(), inputs)
+                Script(open(program, encoding = 'utf-8').read(), inputs)
             else:
                 Script(program, inputs)
         except Exception as e:
