@@ -52,6 +52,7 @@
 ---
 
 - **[v4.0]** : Added token popping quicks, that take a function and iterate over the stack
+- **[v4.1]** : Added spli`t` command
 
 [v0.0]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/b3210742638b802179fdf014081af39e32d2c901
 [v0.1]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/f120f7624530f7c69c26e6e082d6f76f5be85b5d
@@ -97,3 +98,4 @@
 [v3.3.3]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/4d119f80327f52acab97ec15153a1a3f7f9a92e6
 
 [v4.0]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/827f2dac44e1fddb291551ac8005f6bdd1984d3b
+[v4.1]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/8df18dbcdf2e46de026430a9bab1ae451f46af0b
