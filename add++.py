@@ -309,7 +309,7 @@ class StackScript:
                 'q': (1, lambda x: set(x)                               ),
                 'r': (2, lambda x, y: list(range(x, y))                 ),
                 's': (0, lambda: sum(self.stack)                        ),
-                't': (0, lambda: Null                                   ),
+                't': (2, lambda x, y: str(x).split(str(y))              ),
                 'u': (0, lambda: Null                                   ),
                 'v': (1, lambda x: eval(x)                              ),
                 'w': (0, lambda: Null                                   ),
