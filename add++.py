@@ -305,7 +305,7 @@ class StackScript:
                 'm': (0, lambda: min(self.stack)                        ),
                 'n': (0, lambda: self.join()                            ),
                 'o': (2, lambda x, y: x or y                            ),
-                'p': (0, lambda: self.stack.pop()                       ),
+                'p': (1, lambda x: None                                 ),
                 'q': (1, lambda x: set(x)                               ),
                 'r': (2, lambda x, y: list(range(x, y))                 ),
                 's': (0, lambda: sum(self.stack)                        ),
