@@ -1074,12 +1074,12 @@ if __name__ == '__main__':
         if program.endswith(('.txt', '.app')):
             Script(open(program, encoding = 'utf-8').read(), inputs)
         else:
-            Script(program, inputs, flag)
+            Script(program, inputs)
     else:
         try:
             if program.endswith(('.txt', '.app')):
                 Script(open(program, encoding = 'utf-8').read(), inputs)
             else:
-                Script(program, inputs, flag)
+                Script(program, inputs)
         except Exception as e:
             print(e, file=sys.stderr)
