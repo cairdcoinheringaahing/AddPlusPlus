@@ -16,7 +16,7 @@ def isdigit(string):
 def eval_(string):
     if '.' in string: return float(string)
     try: return int(string)
-    except: return string
+    except: return string * (string not in ['--error', '--tokens'])
 
 class Stack(list):
     def push(self, *values):
@@ -213,9 +213,10 @@ class StackScript:
             token = tokens[index]
             if token in self.quicks:
                 tokens[index] = [token, tokens.pop(index + 1)]
-                index += 1
             index += 1
 
+        if '--tokens' in sys.argv[2:]:
+            print(tokens)
         return tokens
 
     @property
@@ -320,7 +321,7 @@ class StackScript:
                 '|': (1, lambda x: abs(x)                               ),
                 '~': (0, lambda: Null                                   ),
 
-                'B!':(0, lambda: self.a(op.not_)                  	),
+                'B!':(0, lambda: self.a(operator.not_)                  ),
                 'B#':(0, lambda: self.a(sorted)                         ),
                 'B$':(0, lambda: Null                                   ),
                 'B%':(0, lambda: self.a(lambda l: fn.reduce(op.mod, l)) ),
@@ -460,7 +461,7 @@ class StackScript:
                 'bf':(0, lambda: Null                                   ),
                 'bg':(0, lambda: Null                                   ),
                 'bh':(0, lambda: Null                                   ),
-                'bi':(0, lambda: Null                                   ),
+                'bi':(1, lambda x: x                                    ),
                 'bj':(0, lambda: Null                                   ),
                 'bk':(0, lambda: Null                                   ),
                 'bl':(0, lambda: Null                                   ),
@@ -1067,18 +1068,18 @@ class Script:
 if __name__ == '__main__':
 
     program = sys.argv[1]
-    inputs = list(map(eval_, sys.argv[2:]))
+    inputs = list(filter(None, map(eval_, sys.argv[2:])))
 
     if '--error' in sys.argv[2:]:
         if program.endswith(('.txt', '.app')):
             Script(open(program, encoding = 'utf-8').read(), inputs)
         else:
-            Script(program, inputs)
+            Script(program, inputs, flag)
     else:
         try:
             if program.endswith(('.txt', '.app')):
                 Script(open(program, encoding = 'utf-8').read(), inputs)
             else:
-                Script(program, inputs)
+                Script(program, inputs, flag)
         except Exception as e:
             print(e, file=sys.stderr)
