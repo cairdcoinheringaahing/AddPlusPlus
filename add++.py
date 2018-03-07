@@ -320,7 +320,7 @@ class StackScript:
                 '|': (1, lambda x: abs(x)                               ),
                 '~': (0, lambda: Null                                   ),
 
-                'B!':(0, lambda: self.a(operator.not_)                  ),
+                'B!':(0, lambda: self.a(op.not_)                  	),
                 'B#':(0, lambda: self.a(sorted)                         ),
                 'B$':(0, lambda: Null                                   ),
                 'B%':(0, lambda: self.a(lambda l: fn.reduce(op.mod, l)) ),
