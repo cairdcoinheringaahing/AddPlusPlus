@@ -420,7 +420,7 @@ class StackScript:
                 'b@':(0, lambda: Null                                   ),
 
                 'bA':(0, lambda: Null                                   ),
-                'bB':(0, lambda: Null                                   ),
+                'bB':(0, lambda: self.pad_bin()                         ),
                 'bC':(0, lambda: Null                                   ),
                 'bD':(0, lambda: Null                                   ),
                 'bE':(0, lambda: Null                                   ),
