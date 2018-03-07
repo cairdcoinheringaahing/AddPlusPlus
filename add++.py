@@ -372,7 +372,7 @@ class StackScript:
                 'B`':(0, lambda: self.a(lambda l: fn.reduce(op.pow, l)) ),
 
                 'Ba':(2, lambda x, y: x & y                             ),
-                'Bb':(2, lambda: int(x, y)                              ),
+                'Bb':(2, lambda x, y: int(x, y)                         ),
                 'Bc':(0, lambda: self.columns()                         ),
                 'Bd':(0, lambda: self.a(lambda l: fn.reduce(op.floordiv, l))                        ),
                 'Be':(1, lambda x: [i in self.stack[-1] for i in x]     ),
