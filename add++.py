@@ -10,6 +10,8 @@ import error
 
 GLOBALREGISTER = None
 
+extchars = '€§«»Þþ¦¬\t\n£ªº↑↓¢Ñ'
+
 def isdigit(string):
     return all(i in '1234567890-.' for i in string)
 
@@ -19,18 +21,35 @@ def eval_(string):
     except: return string * (string not in ['--error', '--tokens'])
 
 class Stack(list):
+    
     def push(self, *values):
         for v in values:
-            if v in [True, False]: v = int(v)
-            try: self.append(v.replace("'",'"'))
-            except: self.append(v)
-    def pop(self, index=-1):
+            if v in [True, False]:
+                v = int(v)
+                
+            try:
+                self.append(v.replace("'",'"'))
+            except:
+                self.append(v)
+            
+    def pop(self, index = -1):
         return super().pop(index)
-    def peek(self, index=-1):
+    
+    def peek(self, index = -1):
         return self[index]
     
     def swap(self):
         self[-1], self[-2] = self[-2], self[-1]
+
+    def __str__(self):
+        elements = self.copy()
+        out = '['
+        for element in elements:
+            if hasattr(element, '__iter__') and type(element) != str:
+                out += str(Stack(element)) + ' '
+            else:
+                out += str(element) + ' '
+        return out.strip() + ']'
         
 def add(x,y):
     return y + x
@@ -159,13 +178,14 @@ class StackScript:
                         self.stack.push(result)
 
     def tokenize(self, text):
+        
         final = []
         stemp = ''
         ctemp = ''
         num = ''
         instr = False
         incall = False
-        text = text.replace('{', ' {')
+        text = text.replace('{', ' {').replace('}', '} ')
         
         for i, char in enumerate(text):
             if char == '"': instr = not instr
@@ -222,21 +242,21 @@ class StackScript:
     @property
     def QUICKS(self):
         return {
-                '€': self.quickeach,
-                '§': self.quicksort,
-                '«': self.quickmax,
-                '»': self.quickmin,
-                'Þ': self.quickfiltertrue,
-                'þ': self.quickfilterfalse,
-                '¦': self.quickreduce,
-                '¬': self.quickaccumulate,
-                '£': self.quickstareach,
-                'ª': self.quickall,
-                'º': self.quickany,
-                '↑': self.quicktakewhile,
-                '↓': self.quickdropwhile,
-                '¢': self.quickgroupby,
-                'Ñ': self.quickneighbours,
+                '€': self.quickeach,        # chr( 1) -> 01
+                '§': self.quicksort,        # chr( 2) -> 02
+                '«': self.quickmax,         # chr( 3) -> 03
+                '»': self.quickmin,         # chr( 4) -> 04
+                'Þ': self.quickfiltertrue,  # chr( 5) -> 05
+                'þ': self.quickfilterfalse, # chr( 6) -> 06
+                '¦': self.quickreduce,      # chr( 7) -> 07
+                '¬': self.quickaccumulate,  # chr( 8) -> 08
+                '£': self.quickstareach,    # chr(11) -> 0b
+                'ª': self.quickall,         # chr(12) -> 0c
+                'º': self.quickany,         # chr(13) -> 0d
+                '↑': self.quicktakewhile,   # chr(14) -> 0e
+                '↓': self.quickdropwhile,   # chr(15) -> 0f
+                '¢': self.quickgroupby,     # chr(16) -> 10
+                'Ñ': self.quickneighbours,  # chr(17) -> 11
                }
     
     @property
@@ -1064,22 +1084,28 @@ class Script:
         if y > self.x: return random.randint(self.x, y)
         return random.randint(y, self.x)
 
-
 if __name__ == '__main__':
 
-    program = sys.argv[1]
-    inputs = list(filter(None, map(eval_, sys.argv[2:])))
+        program = sys.argv[1]
+        inputs = list(filter(None, map(eval_, sys.argv[2:])))
+        raiseerror = '--error' in sys.argv[2:]
 
-    if '--error' in sys.argv[2:]:
-        if program.endswith(('.txt', '.app')):
-            Script(open(program, encoding = 'utf-8').read(), inputs)
+        if re.search(r'\..+$', program):
+            with open(program, mode = 'rb') as file:
+                contents = file.read()
+            code = ''
+            for ordinal in contents:
+                if 0 < ordinal < len(extchars) + 1:
+                    code += extchars[ordinal - 1]
+                else:
+                    code += chr(ordinal)
         else:
-            Script(program, inputs)
-    else:
-        try:
-            if program.endswith(('.txt', '.app')):
-                Script(open(program, encoding = 'utf-8').read(), inputs)
-            else:
-                Script(program, inputs)
-        except Exception as e:
-            print(e, file=sys.stderr)
+            code = program
+
+        if raiseerror:
+            Script(code, inputs)
+        else:
+            try:
+                Script(code, inputs)
+            except Exception as err:
+                print(err, file = sys.stderr)
