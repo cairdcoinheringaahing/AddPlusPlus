@@ -10,15 +10,17 @@ import error
 
 GLOBALREGISTER = None
 
-extchars = '€§«»Þþ¦¬\t\n£ªº↑↓¢Ñ'
+code_page = '''€§«»Þþ¦¬£\t\nªº↑↓¢Ñ×÷¡¿ß‽⁇⁈⁉ΣΠΩΞΔΛ !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~'''
 
 def isdigit(string):
     return all(i in '1234567890-.' for i in string)
 
 def eval_(string):
-    if '.' in string: return float(string)
-    try: return int(string)
-    except: return string * (string not in ['--error', '--tokens'])
+    try:
+        return eval(string)
+    except:
+        if string not in ['--error', '--tokens', '--encoding']:
+            return string
 
 class Stack(list):
     
@@ -242,21 +244,21 @@ class StackScript:
     @property
     def QUICKS(self):
         return {
-                '€': self.quickeach,        # chr( 1) -> 01
-                '§': self.quicksort,        # chr( 2) -> 02
-                '«': self.quickmax,         # chr( 3) -> 03
-                '»': self.quickmin,         # chr( 4) -> 04
-                'Þ': self.quickfiltertrue,  # chr( 5) -> 05
-                'þ': self.quickfilterfalse, # chr( 6) -> 06
-                '¦': self.quickreduce,      # chr( 7) -> 07
-                '¬': self.quickaccumulate,  # chr( 8) -> 08
-                '£': self.quickstareach,    # chr(11) -> 0b
-                'ª': self.quickall,         # chr(12) -> 0c
-                'º': self.quickany,         # chr(13) -> 0d
-                '↑': self.quicktakewhile,   # chr(14) -> 0e
-                '↓': self.quickdropwhile,   # chr(15) -> 0f
-                '¢': self.quickgroupby,     # chr(16) -> 10
-                'Ñ': self.quickneighbours,  # chr(17) -> 11
+                '€': self.quickeach,
+                '§': self.quicksort,
+                '«': self.quickmax,
+                '»': self.quickmin,
+                'Þ': self.quickfiltertrue,
+                'þ': self.quickfilterfalse,
+                '¦': self.quickreduce,
+                '¬': self.quickaccumulate,
+                '£': self.quickstareach,
+                'ª': self.quickall,
+                'º': self.quickany,
+                '↑': self.quicktakewhile,
+                '↓': self.quickdropwhile,
+                '¢': self.quickgroupby,
+                'Ñ': self.quickneighbours,
                }
     
     @property
@@ -1087,18 +1089,19 @@ class Script:
 if __name__ == '__main__':
 
         program = sys.argv[1]
-        inputs = list(filter(None, map(eval_, sys.argv[2:])))
+        inputs = list(map(eval_, sys.argv[2:]))
         raiseerror = '--error' in sys.argv[2:]
+        useutf = '--utf' in sys.argv[2:]
 
         if re.search(r'\..+$', program):
             with open(program, mode = 'rb') as file:
                 contents = file.read()
             code = ''
-            for ordinal in contents:
-                if 0 < ordinal < len(extchars) + 1:
-                    code += extchars[ordinal - 1]
-                else:
-                    code += chr(ordinal)
+            if not useutf:
+                for ordinal in contents:
+                    code += code_page[ordinal]
+            else:
+                code = ''.join(char for char in contents.decode('utf-8') if char in code_page)
         else:
             code = program
 
