@@ -10,7 +10,7 @@ import error
 
 GLOBALREGISTER = None
 
-code_page = '''€§«»Þþ¦¬£\t\nªº↑↓¢Ñ×÷¡¿ß‽⁇⁈⁉ΣΠΩΞΔΛ !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~'''
+code_page = '''€§«»Þþ¦¬£\t\nªº\r↑↓¢Ñ×¡¿ß‽⁇⁈⁉ΣΠΩΞΔΛ !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~'''
 
 def isdigit(string):
     return all(i in '1234567890-.' for i in string)
@@ -19,7 +19,7 @@ def eval_(string):
     try:
         return eval(string)
     except:
-        if string not in ['--error', '--tokens', '--encoding']:
+        if string not in ['--error', '--tokens', '--utf']:
             return string
 
 class Stack(list):
@@ -703,7 +703,10 @@ class StackScript:
             return ret
         if text:
             return ''.join(list(map(StackScript.stringify, ret)))
-        return ret.pop()
+        try:
+            return ret.pop()
+        except:
+            return 0
 
     def run_lambda(self, index):
         lamb = self.functions['lambda {}'.format(index)]
