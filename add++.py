@@ -703,10 +703,15 @@ class StackScript:
             return ret
         if text:
             return ''.join(list(map(StackScript.stringify, ret)))
+        
         try:
-            return ret.pop()
+            final = ret.pop()
         except:
-            return 0
+            final = 0
+            
+        if type(final) == list:
+            return Stack(final)
+        return final
 
     def run_lambda(self, index):
         lamb = self.functions['lambda {}'.format(index)]
