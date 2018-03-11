@@ -87,6 +87,15 @@ def groupby(func, array):
             groups[results[i]] += [value]
     return list(map(lambda a: a[-1], sorted(groups.items(), key = lambda a: a[0])))
 
+def flatten_array(array):
+   flat = []
+   if type(array) == list:
+       for item in array:
+           flat += flatten_array(item)
+   else:
+       flat.append(array)
+   return flat
+
 class Null:
     def __init__(self, value):
         self.value = value
@@ -343,7 +352,7 @@ class StackScript:
                 '|': (1, lambda x: abs(x)                               ),
                 '~': (0, lambda: Null                                   ),
 
-                'B!':(0, lambda: self.a(op.not_)                  	),
+                'B!':(0, lambda: self.a(op.not_)                        ),
                 'B#':(0, lambda: self.a(sorted)                         ),
                 'B$':(0, lambda: Null                                   ),
                 'B%':(0, lambda: self.a(lambda l: fn.reduce(op.mod, l)) ),
@@ -551,15 +560,6 @@ class StackScript:
         return lof
 	
     def flatten(self):
-       def flatten_array(array):
-           flat = []
-           if type(array) == list:
-               for item in array:
-                   flat += flatten_array(item)
-           else:
-               flat.append(array)
-           return flat
-
        copy = flatten_array(list(self.stack))
        self.stack.clear()
        self.stack.push(*copy)
@@ -764,6 +764,16 @@ class Function:
             self.stack.push(list(args))
         else:
             self.stack.push(*args)
+
+        if self.flags[5]:
+            arr = []
+            for element in self.stack:
+                if hasattr(arr, '__iter__'):
+                    for i in element: arr.append(i)
+                else:
+                    arr.append(element)
+            self.stack = Stack(arr.copy())
+            
         script = StackScript(self.code, args, self.outerf, self.stack, self.line, self.gen)
         value = script.run(*self.flags[:2])
         self.stack = Stack()
@@ -795,10 +805,11 @@ class Script:
         self.NILADS = r'!~&#@NPOHSQVG'
         self.MONADS = r'+-*/\^><%=R'
         self.CONSTRUCTS = 'FWEIDL'
+        self.FLAGS = r'*^?:!~'
 
         # print('', *zip(code, list(map(ord, code))), '', sep = '\n')
         self.code = self.process(code.split('\n'))
-            
+
         self.called = False
         self.implicit = False
         self.stored = []
@@ -854,7 +865,7 @@ class Script:
                     func_name = cmd[1]
                     func_args = cmd[2].count('@')
                     func_flags = []
-                    for flag in '*^?:!':
+                    for flag in self.FLAGS:
                         func_flags.append(flag in cmd[2])
                     func_code = ','.join(cmd[3:])
                     self.functions[func_name] = Function(func_name, func_args, func_code,
@@ -866,7 +877,7 @@ class Script:
                     lambda_n = len(list(filter(lambda a: bool(re.search(r'^lambda \d+$', a)), self.functions.keys()))) + 1
                     name = 'lambda {}'.format(lambda_n)
                     lambda_f = []
-                    for flag in '*^?:!':
+                    for flag in self.FLAGS:
                         lambda_f.append(flag == '?' or flag in flags)
                     self.functions[name] = Function(name, -1, lambda_c, self.line,
                                                     code, self.functions, *lambda_f)
