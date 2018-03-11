@@ -55,6 +55,7 @@
 - **[v4.1]** : Added spli`t` command
 - **[v4.2]** : Added 'custom code page' for single byte quicks
 - **[v4.3]** : Fixed custom code page
+- **[v4.4]** : Add `~` argument splat command
 
 [v0.0]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/b3210742638b802179fdf014081af39e32d2c901
 [v0.1]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/f120f7624530f7c69c26e6e082d6f76f5be85b5d
@@ -103,3 +104,4 @@
 [v4.1]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/8df18dbcdf2e46de026430a9bab1ae451f46af0b
 [v4.2]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/e5bf93a705d1cd58e05b03d6510a1175cc9d8dd6
 [v4.3]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/036ad1005f66dd7d32fa289f05950c4ce177be66
+[v4.4]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/5682a36cdef3c7df1367f38726f10303acedd8f9
