@@ -1108,7 +1108,7 @@ class Script:
 if __name__ == '__main__':
 
         program = sys.argv[1]
-        inputs = list(map(eval_, sys.argv[2:]))
+        inputs = list(filter(None, map(eval_, sys.argv[2:])))
         raiseerror = '--error' in sys.argv[2:]
         useutf = '--utf' in sys.argv[2:]
 
