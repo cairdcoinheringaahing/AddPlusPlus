@@ -1,3 +1,4 @@
+import argparse
 import functools as fn
 import itertools as it
 import math
@@ -9,8 +10,13 @@ import sys
 import error
 
 GLOBALREGISTER = None
+VERSION = 4.5
 
-code_page = '''€§«»Þþ¦¬£\t\nªº\r↑↓¢Ñ×¡¿ß‽⁇⁈⁉ΣΠΩΞΔΛ !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~'''
+class addpp(object):
+    def __setattr__(self, name, value):
+        super().__setattr__(name, value)
+
+addpp.code_page = '''€§«»Þþ¦¬£\t\nªº\r↑↓¢Ñ×¡¿ß‽⁇⁈⁉ΣΠΩΞΔΛ !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~'''
 
 def isdigit(string):
     return all(i in '1234567890-.' for i in string)
@@ -19,40 +25,29 @@ def eval_(string):
     try:
         return eval(string)
     except:
-        if string not in ['--error', '--tokens', '--utf']:
-            return string
+        return string
 
-class Stack(list):
-    
-    def push(self, *values):
-        for v in values:
-            if v in [True, False]:
-                v = int(v)
-                
-            try:
-                self.append(v.replace("'",'"'))
-            except:
-                self.append(v)
-            
-    def pop(self, index = -1):
-        return super().pop(index)
-    
-    def peek(self, index = -1):
-        return self[index]
-    
-    def swap(self):
-        self[-1], self[-2] = self[-2], self[-1]
+def convert_version(version):
+    # In  : 3
+    # Out : vers/v3.py
+    # In  : 4.3
+    # Out : vers/v4/v4.3.py
+    # In  : 2.5.1
+    # Out : vers/v2/v2.5/v2.5.1.py
 
-    def __str__(self):
-        elements = self.copy()
-        out = '['
-        for element in elements:
-            if hasattr(element, '__iter__') and type(element) != str:
-                out += str(Stack(element)) + ' '
-            else:
-                out += str(element) + ' '
-        return out.strip() + ']'
-        
+    if version.endswith('.0') and version.count('.') == 1:
+        version = str(int(eval(version)))
+    version = version.split('.')
+    prefixes = [version[:i+1] for i in range(len(version))]
+    folder = 'vers/'
+    for sub in prefixes[:-1]:
+        folder += 'v{}/'.format('v'.join(sub))
+    folder += 'v{}'.format('v'.join(prefixes[-1]))
+
+    numver = eval('.'.join(version[:2]))
+    
+    return folder, numver
+
 def add(x,y):
     return y + x
 
@@ -96,19 +91,71 @@ def flatten_array(array):
        flat.append(array)
    return flat
 
+def base(value, basediv):
+    digits = []
+    sign = (value > 0) - (value < 0)
+    value = abs(value)
+    while value:
+        value, digit = divmod(value, basediv)
+        digits.append(digit)
+    return list(map(lambda v: v * sign, digits[::-1]))
+
+def unbase(digits, base):
+    total = 0
+    for power, digit in enumerate(digits):
+        total += digit * base ** power
+    return total
+
+class Stack(list):
+    
+    def push(self, *values):
+        for v in values:
+            if v in [True, False]:
+                v = int(v)
+                
+            try:
+                self.append(v.replace("'",'"'))
+            except:
+                self.append(v)
+            
+    def pop(self, index = -1):
+        return super().pop(index)
+    
+    def peek(self, index = -1):
+        return self[index]
+    
+    def swap(self):
+        self[-1], self[-2] = self[-2], self[-1]
+
+    def __str__(self):
+        elements = self.copy()
+        out = '['
+        for element in elements:
+            if hasattr(element, '__iter__') and type(element) != str:
+                out += str(Stack(element)) + ' '
+            else:
+                out += repr(element) + ' '
+        return out.strip() + ']'
+
 class Null:
     def __init__(self, value):
         self.value = value
 
+    def __repr__(self):
+        return 'Null'
+
+    def __str__(self):
+        return 'Null'
+
 class StackScript:
 
-    def __init__(self, code, args, funcs, stack, line, outer):
+    def __init__(self, code, args, funcs, stack, line, outer, tokens):
         self.args = args
         self.register = args if args else 0
         self.stacks = [stack]
         self.index = 0
         self.quicks = ''.join(list(self.QUICKS.keys()))
-        self.code = self.tokenize(code + ' ')
+        self.code = self.tokenize(code + ' ', tokens)
         self.prevcall = None
         self.functions = funcs
         cont = False
@@ -188,7 +235,7 @@ class StackScript:
                 if result is not None and result != []:
                         self.stack.push(result)
 
-    def tokenize(self, text):
+    def tokenize(self, text, output):
         
         final = []
         stemp = ''
@@ -246,7 +293,7 @@ class StackScript:
                 tokens[index] = [token, tokens.pop(index + 1)]
             index += 1
 
-        if '--tokens' in sys.argv[2:]:
+        if output:
             print(tokens)
         return tokens
 
@@ -371,7 +418,7 @@ class StackScript:
                 'B@':(0, lambda: self.a(reversed, True)                 ),
                 
                 'BA':(0, lambda: self.a(abs)                            ),
-                'BB':(1, lambda x: bin(x)[2:]                           ),
+                'BB':(1, lambda x: base(x, 2)                           ),
                 'BC':(0, lambda: self.collect()                         ),
                 'BD':(0, lambda: self.a(lambda i: list(map(int, str(i))))                           ),
                 'BE':(0, lambda: self.a(lambda i: i in self.stack[-1])  ),
@@ -404,7 +451,7 @@ class StackScript:
                 'B`':(0, lambda: self.a(lambda l: fn.reduce(op.pow, l)) ),
 
                 'Ba':(2, lambda x, y: x & y                             ),
-                'Bb':(2, lambda x, y: int(x, y)                         ),
+                'Bb':(2, lambda x, y: unbase(x, y)                      ),
                 'Bc':(0, lambda: self.columns()                         ),
                 'Bd':(0, lambda: self.a(lambda l: fn.reduce(op.floordiv, l))                        ),
                 'Be':(1, lambda x: [i in self.stack[-1] for i in x]     ),
@@ -485,7 +532,7 @@ class StackScript:
                 'b`':(1, lambda x: fn.reduce(op.pow, x)                 ),
 
                 'ba':(0, lambda: Null                                   ),
-                'bb':(0, lambda: Null                                   ),
+                'bb':(2, lambda x, y: base(x, y)                        ),
                 'bc':(0, lambda: Null                                   ),
                 'bd':(1, lambda x: fn.reduce(op.floordiv, x)            ),
                 'be':(0, lambda: Null                                   ),
@@ -743,7 +790,7 @@ class StackScript:
 
 class Function:
 
-    def __init__(self, name, args, code, line, g_code, outerf, *flags):
+    def __init__(self, name, args, code, line, g_code, outerf, tkns, *flags):
         self.name = name
         self.args = args if args != -1 else 0
         self.lamb = args == -1
@@ -753,6 +800,7 @@ class Function:
         self.line = line
         self.gen = g_code
         self.outerf = outerf
+        self.tkns = tkns
 
     def __call__(self, *args, funccall = False):
         if not self.flags[2]:
@@ -774,7 +822,7 @@ class Function:
                     arr.append(element)
             self.stack = Stack(arr.copy())
             
-        script = StackScript(self.code, args, self.outerf, self.stack, self.line, self.gen)
+        script = StackScript(self.code, args, self.outerf, self.stack, self.line, self.gen, self.tkns)
         value = script.run(*self.flags[:2])
         self.stack = Stack()
         
@@ -800,14 +848,13 @@ class Script:
                 final.append(line.split(';')[0].strip())
         return list(filter(None, map(lambda a: a.strip(','), final)))
 
-    def __init__(self,code, inputs=()):
+    def __init__(self,code, inputs, impfunc, tokens):
 
         self.NILADS = r'!~&#@NPOHSQVG'
         self.MONADS = r'+-*/\^><%=R'
         self.CONSTRUCTS = 'FWEIDL'
         self.FLAGS = r'*^?:!~'
 
-        # print('', *zip(code, list(map(ord, code))), '', sep = '\n')
         self.code = self.process(code.split('\n'))
 
         self.called = False
@@ -825,41 +872,49 @@ class Script:
             self.line += 1
                 
             if cmd[0] in self.CONSTRUCTS:
+                
                 if cmd[:2] == 'EX':
                     loop = cmd.split(',')[1:]
                     for element in self.stored:
                         for chunk in loop:
                             self.run_chunk(chunk, x=element)
+                            
                 elif cmd[:2] == 'EY':
                     loop = cmd.split(',')[1:]
                     for element in self.stored:
                         for chunk in loop:
                             self.run_chunk(chunk, y=element)
+                            
                 elif cmd[:2] == 'W=':
                     loop = cmd.split(',')[1:]
                     while self.x == self.y:
                         for chunk in loop:
                             self.run_chunk(chunk)
+                            
                 elif cmd[:2] == 'W!':
                     loop = cmd.split(',')[1:]
                     while self.x != self.y:
                         for chunk in loop:
                             self.run_chunk(chunk)
+                            
                 elif cmd[0] == 'F':
                     loop = cmd.split(',')[1:]
                     for _ in range(self.x):
                         for chunk in loop:
                             self.run_chunk(chunk)
+                            
                 elif cmd[0] == 'I':
                     loop = cmd.split(',')[1:]
                     if self.x:
                         for chunk in loop:
                             self.run_chunk(chunk)
+                            
                 elif cmd[0] == 'W':
                     loop = cmd.split(',')[1:]
                     while self.x:
                         for chunk in loop:
                             self.run_chunk(chunk)
+                            
                 elif cmd[0] == 'D':
                     cmd = cmd.split(',')
                     func_name = cmd[1]
@@ -868,8 +923,8 @@ class Script:
                     for flag in self.FLAGS:
                         func_flags.append(flag in cmd[2])
                     func_code = ','.join(cmd[3:])
-                    self.functions[func_name] = Function(func_name, func_args, func_code,
-                                                         self.line, code, self.functions, *func_flags)
+                    self.functions[func_name] = Function(func_name, func_args, func_code, self.line, code, self.functions, tokens, *func_flags)
+
                 elif cmd[0] == 'L':
                     cmd = cmd.split(',')
                     flags = cmd[0][1:]
@@ -879,8 +934,7 @@ class Script:
                     lambda_f = []
                     for flag in self.FLAGS:
                         lambda_f.append(flag == '?' or flag in flags)
-                    self.functions[name] = Function(name, -1, lambda_c, self.line,
-                                                    code, self.functions, *lambda_f)
+                    self.functions[name] = Function(name, -1, lambda_c, self.line, code, self.functions, tokens, *lambda_f)
                     
             else:
                 self.implicit = True
@@ -933,7 +987,7 @@ class Script:
                 else:
                     self.run_chunk(cmd)
                     
-        if not self.called and self.functions:
+        if impfunc and not self.called and self.functions:
             func = self.functions[list(self.functions.keys())[0]]
             if self.I < len(self.inputs): result = func(*self.inputs[self.I:])
             elif self.x:
@@ -1105,29 +1159,69 @@ class Script:
         if y > self.x: return random.randint(self.x, y)
         return random.randint(y, self.x)
 
+addpp.Script = Script
+
 if __name__ == '__main__':
+    
+    parser = argparse.ArgumentParser(prog = './add++')
 
-        program = sys.argv[1]
-        inputs = list(filter(None, map(eval_, sys.argv[2:])))
-        raiseerror = '--error' in sys.argv[2:]
-        useutf = '--utf' in sys.argv[2:]
+    a = 'store_true'
 
-        if re.search(r'\..+$', program):
-            with open(program, mode = 'rb') as file:
-                contents = file.read()
+    getcode = parser.add_mutually_exclusive_group()
+    getcode.add_argument('-f', '--file', help = 'Specifies that code be read from a file', action = a)
+    getcode.add_argument('-c', '--cmd', '--cmdline', help = 'Specifies that code be read from the command line', action = a)
+
+    parser.add_argument('-e', '--error', help = 'Show full error messages', action = a)
+    parser.add_argument('-i', '--implicit', help = 'Implicitly call a function at the end', action = a)
+    parser.add_argument('-t', '--tokens', help = 'Show function tokens', action = a)
+    parser.add_argument('-u', '--utf', help = 'Use utf-8 encoding rather than Add++', action = a)
+    parser.add_argument('--version', help = 'Specify version to use', metavar = 'VERSION', type = convert_version)
+
+    verbose = parser.add_mutually_exclusive_group()
+    verbose.add_argument('-va', '--verbose-all', help = 'Make all sections verbose', action = a)
+    verbose.add_argument('-vo', '--verbose-out', help = 'Output golfed code from verbose', action = a)
+    verbose.add_argument('-vv', '--verbose-van', help = 'Make vanilla code verbose', action = a)
+                         
+    parser.add_argument('program')
+    parser.add_argument('input', nargs = '*')
+    settings = parser.parse_args()
+
+    if settings.version:
+        settings.verfile, settings.vernum = settings.version
+        del settings.version
+    else:
+        settings.verfile, settings.vernum = None, VERSION
+        del settings.version
+
+    settings.verbose = any([settings.verbose_all, settings.verbose_out, settings.verbose_van])
+
+    if settings.vernum != VERSION:
+        sys.path.insert(0, '/'.join(settings.verfile.split('/')[:-1]))
+        addpp = __import__(settings.verfile.split('/')[-1])
+
+    if settings.cmd:
+        code = settings.program
+    elif settings.file:
+        with open(settings.program, mode = 'rb') as file:
+            contents = file.read()
+        if 0 <= settings.vernum < 4.3 or settings.utf:
+            code = contents.decode('utf-8')
+        else:
             code = ''
-            if not useutf:
-                for ordinal in contents:
-                    code += code_page[ordinal]
-            else:
-                code = ''.join(char for char in contents.decode('utf-8') if char in code_page)
-        else:
-            code = program
+            for ordinal in contents:
+                code += addpp.code_page[ordinal]
 
-        if raiseerror:
-            Script(code, inputs)
-        else:
-            try:
-                Script(code, inputs)
-            except Exception as err:
-                print(err, file = sys.stderr)
+    if settings.verbose and settings.vernum >= 5:
+        executor = addpp.VerboseScript
+    else:
+        executor = addpp.Script
+
+    code = code.replace('\r\n', '\n')
+
+    if settings.error:
+        executor(code, settings.input, settings.implicit, settings.tokens)
+    else:
+        try:
+            executor(code, settings.input, settings.implicit, settings.tokens)
+        except Exception as err:
+            print(err, file = sys.stderr)
