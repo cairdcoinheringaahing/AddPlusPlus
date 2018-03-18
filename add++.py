@@ -27,7 +27,7 @@ def eval_(string):
     except:
         return string
 
-def convert_version(version):
+def convert_version(version, tio = False):
     # In  : 3
     # Out : vers/v3.py
     # In  : 4.3
@@ -39,7 +39,10 @@ def convert_version(version):
         version = str(int(eval(version)))
     version = version.split('.')
     prefixes = [version[:i+1] for i in range(len(version))]
-    folder = 'vers/'
+    if tio:
+        folder = '/opt/addpp/vers/'
+    else:
+        folder = 'vers/'
     for sub in prefixes[:-1]:
         folder += 'v{}/'.format('v'.join(sub))
     folder += 'v{}'.format('v'.join(prefixes[-1]))
@@ -1175,7 +1178,7 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--implicit', help = 'Implicitly call a function at the end', action = a)
     parser.add_argument('-t', '--tokens', help = 'Show function tokens', action = a)
     parser.add_argument('-u', '--utf', help = 'Use utf-8 encoding rather than Add++', action = a)
-    parser.add_argument('--version', help = 'Specify version to use', metavar = 'VERSION', type = convert_version)
+    parser.add_argument('--version', help = 'Specify version to use', metavar = 'VERSION')
 
     verbose = parser.add_mutually_exclusive_group()
     verbose.add_argument('-va', '--verbose-all', help = 'Make all sections verbose', action = a)
@@ -1183,8 +1186,10 @@ if __name__ == '__main__':
     verbose.add_argument('-vv', '--verbose-van', help = 'Make vanilla code verbose', action = a)
                          
     parser.add_argument('program')
-    parser.add_argument('input', nargs = '*')
+    parser.add_argument('input', nargs = '*', type = eval_)
     settings = parser.parse_args()
+
+    settings.version = convert_version(settings.version, settings.file == '.code.tio')
 
     if settings.version:
         settings.verfile, settings.vernum = settings.version
