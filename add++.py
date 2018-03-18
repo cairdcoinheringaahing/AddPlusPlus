@@ -1189,7 +1189,8 @@ if __name__ == '__main__':
     parser.add_argument('input', nargs = '*', type = eval_)
     settings = parser.parse_args()
 
-    settings.version = convert_version(settings.version, settings.file == '.code.tio')
+    if settings.version:
+        settings.version = convert_version(settings.version, settings.file == '.code.tio')
 
     if settings.version:
         settings.verfile, settings.vernum = settings.version
