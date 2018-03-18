@@ -180,11 +180,7 @@ class StackScript:
                 self.stack.push(cmd[1:])
             elif type(cmd) == list:
                 quick, cmd = cmd
-                if cmd[0] == '{' and cmd[-1] == '}':
-                    func = self.functions[cmd[1:-1]]
-                    self.QUICKS[quick]((func.args, func))
-                else:
-                    self.QUICKS[quick](self.COMMANDS[cmd.strip()])
+                self.runquick(quick, cmd)
             elif cmd[0] == '{' and cmd[-1] == '}':
                 
                 if cmd[1] == ',':
@@ -238,6 +234,15 @@ class StackScript:
                 if result is not None and result != []:
                         self.stack.push(result)
 
+    def runquick(self, quick, cmd):
+            if cmd in self.QUICKS.keys():
+                self.runquick(*cmd)
+            elif cmd[0] == '{' and cmd[-1] == '}':
+                func = self.functions[cmd[1:-1]]
+                self.QUICKS[quick]((func.args, func))
+            else:
+                self.QUICKS[quick](self.COMMANDS[cmd.strip()])
+
     def tokenize(self, text, output):
         
         final = []
@@ -289,16 +294,22 @@ class StackScript:
             else:
                 tokens.append(f)
 
+        chain = [[]]
+
         index = 0
         while index < len(tokens):
-            token = tokens[index]
-            if token in self.quicks:
-                tokens[index] = [token, tokens.pop(index + 1)]
+            if tokens[index] in self.quicks:
+                if type(chain[-1]) != list:
+                    chain.append([])
+                chain[-1] += [tokens[index], tokens[index+1]]
+                index += 1
+            else:
+                chain.append(tokens[index])
             index += 1
 
         if output:
-            print(tokens)
-        return tokens
+            print(chain)
+        return chain
 
     @property
     def QUICKS(self):
@@ -1190,6 +1201,7 @@ if __name__ == '__main__':
     settings = parser.parse_args()
 
     if settings.version:
+    	print(settings.verfile, settings.vernum)
         settings.version = convert_version(settings.version, settings.file == '.code.tio')
 
     if settings.version:
