@@ -27,7 +27,7 @@ def eval_(string):
     except:
         return string
 
-def convert_version(version, tio = False):
+def convert_version(version):
     # In  : 3
     # Out : vers/v3.py
     # In  : 4.3
@@ -38,14 +38,7 @@ def convert_version(version, tio = False):
     if version.endswith('.0') and version.count('.') == 1:
         version = str(int(eval(version)))
     version = version.split('.')
-    prefixes = [version[:i+1] for i in range(len(version))]
-    if tio:
-        folder = '/opt/addpp/vers/'
-    else:
-        folder = 'vers/'
-    for sub in prefixes[:-1]:
-        folder += 'v{}/'.format('v'.join(sub))
-    folder += 'v{}'.format('v'.join(prefixes[-1]))
+    folder = 'vers.v' + 'v'.join(version)
 
     numver = eval('.'.join(version[:2]))
     
@@ -1201,8 +1194,8 @@ if __name__ == '__main__':
     settings = parser.parse_args()
 
     if settings.version:
-    	print(settings.verfile, settings.vernum)
-        settings.version = convert_version(settings.version, settings.file == '.code.tio')
+        settings.version = convert_version(settings.version)
+        print(settings.version)
 
     if settings.version:
         settings.verfile, settings.vernum = settings.version
@@ -1214,8 +1207,8 @@ if __name__ == '__main__':
     settings.verbose = any([settings.verbose_all, settings.verbose_out, settings.verbose_van])
 
     if settings.vernum != VERSION:
-        sys.path.insert(0, '/'.join(settings.verfile.split('/')[:-1]))
-        addpp = __import__(settings.verfile.split('/')[-1])
+        addpp = __import__(settings.verfile)
+        addpp = eval('addpp.{}'.format(settings.verfile.split('.')[-1]))
 
     if settings.cmd:
         code = settings.program
