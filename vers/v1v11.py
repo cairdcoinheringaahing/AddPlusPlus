@@ -465,7 +465,7 @@ class Function:
         self.stack = Stack()
         self.flags = list(flags)
         self.line = line
-        self.gen = gen_code
+        self.gen = g_code
 
     def __call__(self, *args):
         if not self.flags[2]:
