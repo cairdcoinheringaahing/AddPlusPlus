@@ -355,7 +355,7 @@ class StackScript:
                         index += 1
             else:
                 chain.append(tokens[index])
-            	index += 1
+                index += 1
 
         chain = list(filter(None, chain))
 
