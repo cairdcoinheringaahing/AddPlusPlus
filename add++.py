@@ -21,7 +21,22 @@ addpp.code_page = '''€§«»Þþ¦¬£\t\nªº\r↑↓¢Ñ×¡¿ß‽⁇⁈⁉
 def isdigit(string):
     return all(i in '1234567890-.' for i in string)
 
+def split(string, sep):
+    final = []
+    splitting = True
+    index = 0
+    for i, char in enumerate(string):
+        if char == '"':
+            splitting ^= 1
+            continue
+        if char == sep and splitting:
+            final.append(string[index : i])
+            index = i + 1
+    return final + [string[index : ]]
+
 def eval_(string):
+    if string[0] == '[' and string[-1] == ']':
+        string = ', '.join(split(string, ' '))
     try:
         return eval(string)
     except:
@@ -879,6 +894,10 @@ class Script:
             
         for cmd in self.code:
             self.line += 1
+            if type(self.x) == list:
+                self.x = Stack(self.x)
+            if type(self.y) == list:
+                self.y = Stack(self.y)
                 
             if cmd[0] in self.CONSTRUCTS:
                 
