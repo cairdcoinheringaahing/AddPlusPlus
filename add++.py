@@ -10,7 +10,7 @@ import sys
 import error
 
 GLOBALREGISTER = None
-VERSION = 4.5
+VERSION = 4.6
 
 class addpp(object):
     def __setattr__(self, name, value):
