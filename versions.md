@@ -58,6 +58,7 @@
 - **[v4.4]** : Add `~` argument splat command
 - **[v4.5]** : Added version support
 - **[v4.6]** : Changed input list format to space separated
+- **[v4.7]** : Added new quicks
 
 [v0.0]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/b3210742638b802179fdf014081af39e32d2c901
 [v0.1]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/f120f7624530f7c69c26e6e082d6f76f5be85b5d
@@ -109,3 +110,4 @@
 [v4.4]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/5682a36cdef3c7df1367f38726f10303acedd8f9
 [v4.5]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/bf1487af61e3cefa378148885713277f141516b6
 [v4.6]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/9b1c4122195a49984c77053adaa543bcd2bf5606
+[v4.7]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/c5e56cc16fef2b2b95e1a4b92ffc076bda27ef4d
