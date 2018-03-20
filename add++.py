@@ -10,7 +10,7 @@ import sys
 import error
 
 GLOBALREGISTER = None
-VERSION = 4.6
+VERSION = 4.7
 
 class addpp(object):
     def __setattr__(self, name, value):
@@ -160,15 +160,31 @@ class Null:
 
 class StackScript:
 
-    def __init__(self, code, args, funcs, stack, line, outer, tokens):
+    def __call__(self, code):
+        args = [self.name, code, self.args, self.functions,
+                Stack(self.args), self.line, self.outer, self.tokens]
+        return StackScript(*args)
+
+    def __init__(self, name, code, args, funcs, stack,
+                 line, outer, tokens, recur = False):
+        
         self.args = args
         self.register = args if args else 0
         self.stacks = [stack]
         self.index = 0
+        
         self.quicks = ''.join(list(self.QUICKS.keys()))
-        self.code = self.tokenize(code + ' ', tokens)
         self.prevcall = None
+        self.recur = recur
+        self.name = name
+        
         self.functions = funcs
+        self.line = line
+        self.outer = outer
+        self.tokens = tokens
+        
+        self.code = self.tokenize(code + ' ', tokens)
+        
         cont = False
 
         outer = outer.split('\n')
@@ -187,7 +203,7 @@ class StackScript:
             if cmd[0] == '"':
                 self.stack.push(cmd[1:])
             elif type(cmd) == list:
-                quick, cmd = cmd
+                quick, *cmd = cmd
                 self.runquick(quick, cmd)
             elif cmd[0] == '{' and cmd[-1] == '}':
                 
@@ -211,8 +227,12 @@ class StackScript:
                     while len(feed) < (argcount or func.args):
                         feed.append(self.stack.pop())
                     feed = feed[::-1]
+
+                if cmd[sslice:-1] == self.name:
+                    self.prevcall = func(*feed, funccall = True, recur = True)
+                else:
+                    self.prevcall = func(*feed, funccall = True)
                     
-                self.prevcall = func(*feed, funccall = True)
                 self.stack.push(self.prevcall)
                 
             elif isdigit(cmd):
@@ -240,16 +260,19 @@ class StackScript:
                     raise error.InvalidSymbolError(line, outer[line-1], cmd)
 
                 if result is not None and result != []:
-                        self.stack.push(result)
+                    self.stack.push(result)
 
     def runquick(self, quick, cmd):
-            if cmd in self.QUICKS.keys():
-                self.runquick(*cmd)
-            elif cmd[0] == '{' and cmd[-1] == '}':
-                func = self.functions[cmd[1:-1]]
-                self.QUICKS[quick]((func.args, func))
-            else:
-                self.QUICKS[quick](self.COMMANDS[cmd.strip()])
+        if len(cmd) == 1:
+            cmd = cmd[0]
+
+        if type(cmd) == list:
+            self.QUICKS[quick][1](cmd)
+        elif cmd[0] == '{' and cmd[-1] == '}':
+            func = self.functions[cmd[1:-1]]
+            self.QUICKS[quick]((func.args, func))
+        else:
+            self.QUICKS[quick](self.COMMANDS[cmd.strip()])
 
     def tokenize(self, text, output):
         
@@ -262,6 +285,13 @@ class StackScript:
         text = text.replace('{', ' {').replace('}', '} ')
         
         for i, char in enumerate(text):
+
+            if char == '¡':
+                if self.recur:
+                    break
+                else:
+                    continue
+            
             if char == '"': instr = not instr
             if char == '{': incall = True
             if char == '}': incall = False; ctemp += '}'; continue
@@ -302,15 +332,26 @@ class StackScript:
             else:
                 tokens.append(f)
 
-        chain = [[]]
+        chain = [None]
 
         index = 0
         while index < len(tokens):
             if tokens[index] in self.quicks:
+                hungry = self.QUICKS[tokens[index]][0]
+                quick = tokens[index]
+                
                 if type(chain[-1]) != list:
-                    chain.append([])
-                chain[-1] += [tokens[index], tokens[index+1]]
-                index += 1
+                    chain.append([quick])
+                
+                if hungry < 0:
+                    index += 1
+                    while tokens[index] != quick:
+                        chain[-1] += tokens[index]
+                        index += 1
+                else:
+                    for _ in range(hungry):
+                        chain[-1] += tokens[index]
+                        index += 1
             else:
                 chain.append(tokens[index])
             index += 1
@@ -324,21 +365,23 @@ class StackScript:
     @property
     def QUICKS(self):
         return {
-                '€': self.quickeach,
-                '§': self.quicksort,
-                '«': self.quickmax,
-                '»': self.quickmin,
-                'Þ': self.quickfiltertrue,
-                'þ': self.quickfilterfalse,
-                '¦': self.quickreduce,
-                '¬': self.quickaccumulate,
-                '£': self.quickstareach,
-                'ª': self.quickall,
-                'º': self.quickany,
-                '↑': self.quicktakewhile,
-                '↓': self.quickdropwhile,
-                '¢': self.quickgroupby,
-                'Ñ': self.quickneighbours,
+                '€': ( 1, self.quickeach                                ),
+                '§': ( 1, self.quicksort                                ),
+                '«': ( 1, self.quickmax                                 ),
+                '»': ( 1, self.quickmin                                 ),
+                'Þ': ( 1, self.quickfiltertrue                          ),
+                'þ': ( 1, self.quickfilterfalse                         ),
+                '¦': ( 1, self.quickreduce                              ),
+                '¬': ( 1, self.quickaccumulate                          ),
+                '£': ( 1, self.quickstareach                            ),
+                'ª': ( 1, self.quickall                                 ),
+                'º': ( 1, self.quickany                                 ),
+                '↑': ( 1, self.quicktakewhile                           ),
+                '↓': ( 1, self.quickdropwhile                           ),
+                '¢': ( 1, self.quickgroupby                             ),
+                'Ñ': ( 1, self.quickneighbours                          ),
+                'Ω': ( 1, self.quickreverse                             ),
+                '¿': (-1, self.quickternary                             ),
                }
     
     @property
@@ -737,6 +780,11 @@ class StackScript:
         arity, cmd = cmd
         self.stack.push(fn.reduce(cmd, self.stack))
 
+    def quickreverse(self, cmd):
+        arity, cmd = cmd
+        args = [self.stack.pop() for _ in range(arity)][::-1]
+        self.stack.push(cmd(*args))
+
     def quicksort(self, cmd):
         arity, cmd = cmd
         if arity == 2:
@@ -756,7 +804,15 @@ class StackScript:
             self.stacks[self.index] = Stack(it.takewhile(lambda v: cmd(right, v), self.stack))
         if arity == 1:
             self.stacks[self.index] = Stack(it.takewhile(cmd, self.stack))
-		
+
+    def quickternary(self, cmd):
+        cond, ifclause, elseclause = split(''.join(cmd), ',')
+        if self(cond).stacks.pop().pop():
+            ret = self(ifclause).stacks.pop().pop()
+        else:
+            ret = self(elseclause).stacks.pop().pop()
+        self.stack.push(ret)
+
     def remove(self, even_odd):
         self.stacks[self.index] = Stack(filter(lambda x: x%2 == int(bool(even_odd)), self.stack))
         
@@ -826,7 +882,7 @@ class Function:
         self.outerf = outerf
         self.tkns = tkns
 
-    def __call__(self, *args, funccall = False):
+    def __call__(self, *args, funccall = False, recur = False):
         if not self.flags[2]:
             args = list(args)[:self.args]
             while len(args) != self.args:
@@ -846,7 +902,8 @@ class Function:
                     arr.append(element)
             self.stack = Stack(arr.copy())
             
-        script = StackScript(self.code, args, self.outerf, self.stack, self.line, self.gen, self.tkns)
+        script = StackScript(self.name, self.code, args, self.outerf,
+                             self.stack, self.line, self.gen, self.tkns, recur)
         value = script.run(*self.flags[:2])
         self.stack = Stack()
         
@@ -1015,13 +1072,23 @@ class Script:
                 else:
                     self.run_chunk(cmd)
                     
-        if impfunc and not self.called and self.functions:
-            func = self.functions[list(self.functions.keys())[0]]
-            if self.I < len(self.inputs): result = func(*self.inputs[self.I:])
+        if impfunc[0] and not self.called and self.functions:
+            
+            if impfunc[1]:
+                func = self.functions[impfunc[1]]
+            else:
+                func = self.functions[list(self.functions.keys())[0]]
+                
+            if self.I < len(self.inputs):
+                result = func(*self.inputs[self.I:])
             elif self.x:
-                if self.y: result = func(self.x, self.y)
-                else: result = func(self.x)
-            else: result = func()
+                if self.y:
+                    result = func(self.x, self.y)
+                else:
+                    result = func(self.x)
+            else:
+                result = func()
+                
             if type(result) != Null and not self.implicit:
                 print(result)
                 
@@ -1203,7 +1270,9 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--implicit', help = 'Implicitly call a function at the end', action = a)
     parser.add_argument('-t', '--tokens', help = 'Show function tokens', action = a)
     parser.add_argument('-u', '--utf', help = 'Use utf-8 encoding rather than Add++', action = a)
+    
     parser.add_argument('--version', help = 'Specify version to use', metavar = 'VERSION')
+    parser.add_argument('--specify', help = 'Specify implcit function', metavar = 'FUNCTION')
 
     verbose = parser.add_mutually_exclusive_group()
     verbose.add_argument('-va', '--verbose-all', help = 'Make all sections verbose', action = a)
@@ -1251,9 +1320,9 @@ if __name__ == '__main__':
     code = code.replace('\r\n', '\n')
 
     if settings.error:
-        executor(code, settings.input, settings.implicit, settings.tokens)
+        executor(code, settings.input, [settings.implicit, settings.specify], settings.tokens)
     else:
         try:
-            executor(code, settings.input, settings.implicit, settings.tokens)
+            executor(code, settings.input, [settings.implicit, settings.specify], settings.tokens)
         except Exception as err:
             print(err, file = sys.stderr)
