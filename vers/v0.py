@@ -238,6 +238,7 @@ class Script:
                     except:
                         continue
                 else:
+                    v = None
                     try:
                         v = self.COMMANDS[symbol]()
                     except:
