@@ -270,9 +270,9 @@ class StackScript:
             self.QUICKS[quick][1](cmd)
         elif cmd[0] == '{' and cmd[-1] == '}':
             func = self.functions[cmd[1:-1]]
-            self.QUICKS[quick]((func.args, func))
+            self.QUICKS[quick][1]((func.args, func))
         else:
-            self.QUICKS[quick](self.COMMANDS[cmd.strip()])
+            self.QUICKS[quick][1](self.COMMANDS[cmd.strip()])
 
     def tokenize(self, text, output):
         
@@ -342,9 +342,10 @@ class StackScript:
                 
                 if type(chain[-1]) != list:
                     chain.append([quick])
+
+                index += 1
                 
                 if hungry < 0:
-                    index += 1
                     while tokens[index] != quick:
                         chain[-1] += tokens[index]
                         index += 1
