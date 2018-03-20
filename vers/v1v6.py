@@ -339,7 +339,7 @@ class Function:
             while len(args) != self.args:
                 args.append(-1)
         self.stack.push(*args)
-        script = StackScript(self.code, args, self.stack, self.line, self.gen_code)
+        script = StackScript(self.code, args, self.stack, self.line, self.gen)
         value = script.run(self.flag, self.text)
         if self.out:
             print(value)
