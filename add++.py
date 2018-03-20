@@ -300,6 +300,8 @@ class StackScript:
                 chain.append(tokens[index])
             index += 1
 
+        chain = list(filter(None, chain))
+
         if output:
             print(chain)
         return chain
@@ -1195,7 +1197,7 @@ if __name__ == '__main__':
 
     if settings.version:
         settings.version = convert_version(settings.version)
-        print(settings.version)
+        # print(settings.version)
 
     if settings.version:
         settings.verfile, settings.vernum = settings.version
