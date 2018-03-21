@@ -60,6 +60,10 @@
 - **[v4.6]** : Changed input list format to space separated
 - **[v4.7]** : Added new quicks
 
+---
+
+- **[v5.0]** : Readable, verbose mode added (200th commit!)
+
 [v0.0]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/b3210742638b802179fdf014081af39e32d2c901
 [v0.1]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/f120f7624530f7c69c26e6e082d6f76f5be85b5d
 [v0.2]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/ce27765c4c0517dcb6196017daeab5667f62f15b
@@ -111,3 +115,5 @@
 [v4.5]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/bf1487af61e3cefa378148885713277f141516b6
 [v4.6]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/9b1c4122195a49984c77053adaa543bcd2bf5606
 [v4.7]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/c5e56cc16fef2b2b95e1a4b92ffc076bda27ef4d
+
+[v5.0]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/2bf1101b286e6d8bf1c2524407c6f13a2417c6c0
