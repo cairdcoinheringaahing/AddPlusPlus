@@ -1,8 +1,10 @@
 import argparse
+import contextlib
 import functools as fn
 import itertools as it
 import math
 import operator as op
+import os
 import random
 import re
 import sys
@@ -10,13 +12,32 @@ import sys
 import error
 
 GLOBALREGISTER = None
-VERSION = 4.7
+VERSION = 5.0
 
 class addpp(object):
     def __setattr__(self, name, value):
         super().__setattr__(name, value)
 
 addpp.code_page = '''€§«»Þþ¦¬£\t\nªº\r↑↓¢Ñ×¡¿ß‽⁇⁈⁉ΣΠΩΞΔΛ !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~'''
+
+@contextlib.contextmanager
+def suppress_output():
+    with open(os.devnull, "w") as devnull:
+        old_stdout = sys.stdout
+        sys.stdout = devnull
+        try:  
+            yield
+        finally:
+            sys.stdout = old_stdout
+
+def process(lines):
+    final = ['']
+    for line in lines:
+        if line.startswith(('  ', '\t')):
+            final[-1] += line.split(';')[0].strip()
+        else:
+            final.append(line.split(';')[0].strip())
+    return list(filter(None, map(lambda a: a.strip(','), final)))
 
 def isdigit(string):
     return all(i in '1234567890-.' for i in string)
@@ -116,6 +137,249 @@ def unbase(digits, base):
     for power, digit in enumerate(digits):
         total += digit * base ** power
     return total
+
+def initiate(settings, executor):
+    if settings.error:
+        executor(settings.code, settings.input,
+                 [settings.implicit, settings.specify],
+                 settings.tokens)
+    else:
+        try:
+            executor(settings.code, settings.input,
+                     [settings.implicit, settings.specify],
+                     settings.tokens)
+        except Exception as err:
+            print(err, file = sys.stderr)
+
+def transvanilla(code):
+    lookup = {
+        'Factorial'     :   '!',
+        'Negate'        :   '~',
+        'AddOut'        :   '&',
+        'Double'        :   '#',
+        'Halve'         :   '@',
+        'LogNot'        :   'N',
+        'PrintNewline'  :   'P',
+        'Output'        :   'O',
+        'Print'         :   'H',
+        'SquareRoot'    :   'S',
+        'StoreInput'    :   '_',
+        'Store'         :   'V',
+        'Swap'          :   '}',
+        'RandomNatural' :   'R',
+        'Retrieve'      :   'G',
+        'GlobalStore'   :   'K',
+        'GlobalRetrieve':   'U',
+
+        'Add'           :   '+',
+        'Subtract'      :   '-',
+        'MultiplyBy'    :   '*',
+        'DivideBy'      :   '/',
+        'FloorDivideBy' :   '\\',
+        'RaiseToPower'  :   '^',
+        'GreaterThan'   :   '>',
+        'LessThan'      :   '<',
+        'ModuloBy'      :   '%',
+        'Equals'        :   '=',
+        'RandomBetween' :   'R',
+
+        'EachAsX'       :   'EX',
+        'EachAsY'       :   'EY',
+        'WhileEqual'    :   'W=',
+        'WhileNotEqual' :   'W!',
+        'While'         :   'W',
+        'For'           :   'F',
+        'If'            :   'I',
+        }
+
+    final = []
+    for line in process(code.split('\n')):
+        for verb in lookup:
+            if line.startswith(verb):
+                line = line.replace(verb, lookup[verb]).replace(' ', '')
+                break
+        final.append(line)
+    return '\n'.join(final)
+
+def transfunccode(code, decl = None, arg = None):
+    arglookup = {
+        'Arg'       :   '@',
+        'Stack'     :   '*',
+        'String'    :   '^',
+        'Variable'  :   '?',
+        'Output'    :   ':',
+        'Wrap'      :   '!',
+        'Unpack'    :   '~',
+        }
+    
+    codelookup = {
+        'Not'               :   '!',
+        'Sort'              :   '#',
+        'Swap'              :   '$',
+        'Modulo'            :   '%',
+        'And'               :   '&',
+        'Double'            :   "'",
+        'DecActive'         :   '(',
+        'IncActive'         :   ')',
+        'Multiply'          :   '*',
+        'Add'               :   '+',
+        'Divide'            :   '/',
+        'LessThan'          :   '<',
+        'EqualTo'           :   '=',
+        'GreaterThan'       :   '>',
+        'Sign'              :   '?',
+        'Reverse'           :   '@',
+        'Arguments'         :   'A',
+        'Head'              :   'B',
+        'Character'         :   'C',
+        'FromIndex'         :   'D',
+        'Enumerate'         :   'E',
+        'Factors'           :   'F',
+        'Retrieve'          :   'G',
+        'StringOutput'      :   'H',
+        'JoinAll'           :   'J',
+        'Length'            :   'L',
+        'Maximum'           :   'M',
+        'JoinNewline'       :   'N',
+        'Ordinal'           :   'O',
+        'Prime'             :   'P',
+        'Deduplicate'       :   'Q',    #
+        'Range'             :   'R',
+        'DeduplicateFlat'   :   'S',
+        'StorePopped'       :   'V',
+        'FilterUncontains'  :   'W',    #
+        'RepeatSinglePop'   :   'X',
+        'RandomChoice'      :   'Y',    #
+        'FilterFalsey'      :   'Z',    #
+        'PreviousReturn'    :   '[',
+        'CallLambda'        :   ']',
+        'Exponent'          :   '^',
+        'Subtract'          :   '_',
+        'Exponentiation'    :   '`',    #
+        'ListArguments'     :   'a',
+        'ToBase'            :   'b',    #
+        'ClearStack'        :   'c',
+        'Duplicate'         :   'd',
+        'Contains'          :   'e',
+        'PrimeFactors'      :   'f',
+        'StackPrint'        :   'h',
+        'ToInteger'         :   'i',
+        'Join'              :   'j',
+        'Minimum'           :   'm',
+        'JoinNewlines'      :   'n',
+        'Or'                :   'o',
+        'Pop'               :   'p',
+        'ToSet'             :   'q',
+        'DyadicRange'       :   'r',
+        'Sum'               :   's',
+        'Split'             :   't',
+        'Evaluate'          :   'v',
+        'FilterContains'    :   'w',    #
+        'RepeatWithoutPop'  :   'x',
+        'FlatPoppingRepeat' :   'y',
+        'AbsoluteValue'     :   '|',
+        'BitFlip'           :   '~',    #
+
+        'GlobalRetrieve'    :   'BK',
+        'GlobalAssign'      :   'Bk',
+    }
+
+    maplookup = {
+
+        'StackMap:'         :   'B',
+        'SingleMap:'        :   'b',
+
+        'Each:'             :   '€',
+        'Sort:'             :   '§',
+        'Max:'              :   '«',
+        'Min:'              :   '»',
+        'FilterKeep:'       :   'Þ',
+        'FilterDiscard:'    :   'þ',
+        'Reduce:'           :   '¦',
+        'Accumulate:'       :   '¬',
+        'StarMap:'          :   '£',
+        'AllTrue:'          :   'ª',
+        'AnyTrue:'          :   'º',
+        'TakeWhile:'        :   '↑',
+        'DropWhile:'        :   '↓',
+        'Group:'            :   '¢',
+        'Neighbours:'       :   'Ñ',
+        'Reverse:'          :   'Ω',
+        'Splat:'            :   'ß',
+        
+        'Ternary:'          :   '¿',
+        ':EndTernary'       :   '¿',
+        'Then:'             :   ',',
+        'Else:'             :   ',',
+        }
+        
+    if decl is arg is None:
+        decl, arg, code = list(map(str.strip, split(code, '>')))
+        decl = re.sub(r'^Declare ([^,]+)$', r'D,\1,', decl)
+    arg = ''.join(map(arglookup.get, arg.split())) + ','
+
+    tokens = split(code, ' ')
+    for i, tkn in enumerate(tokens):
+        repl = False
+        
+        for m in maplookup:
+            if tkn.startswith(m):
+                tkn = tkn.replace(m, maplookup[m])
+                repl = True
+                
+        for t in codelookup:
+            if repl:
+                if tkn[1:] == t:
+                    tkn = tkn.replace(t, codelookup[t])
+            else:
+                if tkn == t:
+                    tkn = tkn.replace(t, codelookup[t])
+        tokens[i] = tkn
+
+    return decl + arg + ''.join(tokens)
+
+def translambcode(code):
+    _, arg, code = list(map(str.strip, split(code, '>')))
+    return transfunccode(code, 'L', arg)
+
+def transcallcode(code):
+    repls = {
+        'Call '     :   '$',
+        ' With '    :   '>',
+        ' And '     :   '>',
+        'Input'     :   '?'
+        }
+    for r in repls:
+        code = code.replace(r, repls[r])
+    return code
+
+def transfunc(code):
+    final = []
+    for line in process(code.split('\n')):
+        if line.startswith('Declare'):
+            line = transfunccode(line)
+        elif line.startswith('Lambda'):
+            line = translambcode(line)
+        elif line.startswith('Call'):
+            line = transcallcode(line)
+        else:
+            line = line
+        final.append(line)
+    return '\n'.join(final)
+
+def VerboseScript(code, inputs, function, tokens, vall, vvan, vfun, vout, settings):
+    implicit, func = function
+    
+    if vall or vvan:
+        code = transvanilla(code)
+    if vall or vfun:
+        code = transfunc(code)
+        
+    settings.code = code
+    initiate(settings, Script)
+    
+    if vout:
+        print('\n' + code)
 
 class Stack(list):
     
@@ -250,6 +514,8 @@ class StackScript:
                 
                 try:
                     arity, command = self.COMMANDS[cmd]
+                    if arity < 0:
+                        arity = 0
                     result = command(*[self.stack.pop() for _ in range(arity)])
                 except TypeError:
                     raise error.IncongruentTypesError(line, outer[line-1], cmd)
@@ -266,13 +532,18 @@ class StackScript:
         if len(cmd) == 1:
             cmd = cmd[0]
 
-        if type(cmd) == list:
-            self.QUICKS[quick][1](cmd)
-        elif cmd[0] == '{' and cmd[-1] == '}':
+        if cmd[0] == '{' and cmd[-1] == '}':
+            cmd = ''.join(cmd)
             func = self.functions[cmd[1:-1]]
             self.QUICKS[quick][1]((func.args, func))
+        elif type(cmd) == list:
+            self.QUICKS[quick][1](cmd)
         else:
-            self.QUICKS[quick][1](self.COMMANDS[cmd.strip()])
+            cmd = ''.join(cmd).strip()
+            if cmd not in self.COMMANDS or self.COMMANDS[cmd][0] == -1:
+                self.runquick(quick, '{' + cmd + '}')
+            else:
+                self.QUICKS[quick][1](self.COMMANDS[cmd])
 
     def tokenize(self, text, output):
         
@@ -383,251 +654,252 @@ class StackScript:
                 'Ñ': ( 1, self.quickneighbours                          ),
                 'Ω': ( 1, self.quickreverse                             ),
                 '¿': (-1, self.quickternary                             ),
+                'ß': ( 1, self.quicksplat                               ),
                }
     
     @property
     def COMMANDS(self):
         return {
-                '!': (1, lambda x: not x                                ),
-                '#': (0, lambda: self.stack.sort()                      ),
-                '$': (0, lambda: self.stack.swap()                      ),
-                '%': (2, lambda x, y: modulo(x, y)                      ),
-                '&': (2, lambda x, y: x and y                           ),
-                "'": (1, lambda x: x * 2                                ),
-                '(': (0, lambda: self.decrement()                       ),
-                ')': (0, lambda: self.increment()                       ),
-                '*': (2, lambda x, y: multiply(x, y)                    ),
-                '+': (2, lambda x, y: add(x, y)                         ),
-                '/': (2, lambda x, y: divide(x, y)                      ),
-                ':': (0, lambda: Null                                   ),
-                '<': (2, lambda x, y: x < y                             ),
-                '=': (2, lambda x, y: x == y                            ),
-                '>': (2, lambda x, y: x > y                             ),
-                '?': (1, lambda x: (x > 0) - (x < 0)                    ),
-                '@': (0, lambda: self.stack.reverse()                   ),
+                '!': ( 1, lambda x: not x                               ),
+                '#': ( 0, lambda: self.stack.sort()                     ),
+                '$': ( 0, lambda: self.stack.swap()                     ),
+                '%': ( 2, lambda x, y: modulo(x, y)                     ),
+                '&': ( 2, lambda x, y: x and y                          ),
+                "'": ( 1, lambda x: x * 2                               ),
+                '(': ( 0, lambda: self.decrement()                      ),
+                ')': ( 0, lambda: self.increment()                      ),
+                '*': ( 2, lambda x, y: multiply(x, y)                   ),
+                '+': ( 2, lambda x, y: add(x, y)                        ),
+                '/': ( 2, lambda x, y: divide(x, y)                     ),
+                ':': (-1, lambda: Null                                  ),
+                '<': ( 2, lambda x, y: x < y                            ),
+                '=': ( 2, lambda x, y: x == y                           ),
+                '>': ( 2, lambda x, y: x > y                            ),
+                '?': ( 1, lambda x: (x > 0) - (x < 0)                   ),
+                '@': ( 0, lambda: self.stack.reverse()                  ),
                 
-                'A': (0, lambda: self.stack.push(*self.args)            ),
-                'B': (1, lambda x: self.stack[:x]                       ),
-                'C': (1, lambda x: chr(x)                               ),
-                'D': (1, lambda x: self.stack[-x]                       ),
-                'E': (1, lambda x: list(map(list, enumerate(x)))        ),
-                'F': (0, lambda: self.stack.push(*self.factors())       ),
-                'G': (0, lambda: self.stack.push(self.register)         ),
-                'H': (0, lambda: print(''.join(map(str, self.stack)))   ),
-                'I': (0, lambda: Null                                   ),
-                'J': (0, lambda: self.join('')                          ),
-                'K': (0, lambda: Null                                   ),
-                'L': (0, lambda: len(self.stack)                        ),
-                'M': (0, lambda: max(self.stack)                        ),
-                'N': (0, lambda: '\n'.join(map(str, self.stack))        ),
-                'O': (1, lambda x: ord(x)                               ),
-                'P': (1, lambda x: isprime(x)                           ),
-                'R': (1, lambda x: list(range(1, x+1))                  ),
-                'S': (0, lambda: self.remove_duplicates()               ),
-                'T': (0, lambda: Null                                   ),
-                'U': (0, lambda: Null                                   ),
-                'V': (1, lambda x: self.store(x)                        ),
-                'X': (2, lambda x, y: [x for _ in range(y)]             ),
-                'Y': (0, lambda: Null                                   ),
-                'Z': (0, lambda: Null                                   ),
+                'A': ( 0, lambda: self.stack.push(*self.args)           ),
+                'B': ( 1, lambda x: self.stack[:x]                      ),
+                'C': ( 1, lambda x: chr(x)                              ),
+                'D': ( 1, lambda x: self.stack[-x]                      ),
+                'E': ( 1, lambda x: list(map(list, enumerate(x)))       ),
+                'F': ( 0, lambda: self.stack.push(*self.factors())      ),
+                'G': ( 0, lambda: self.stack.push(self.register)        ),
+                'H': ( 0, lambda: print(''.join(map(str, self.stack)))  ),
+                'I': (-1, lambda: Null                                  ),
+                'J': ( 0, lambda: self.join('')                         ),
+                'K': (-1, lambda: Null                                  ),
+                'L': ( 0, lambda: len(self.stack)                       ),
+                'M': ( 0, lambda: max(self.stack)                       ),
+                'N': ( 0, lambda: '\n'.join(map(str, self.stack))       ),
+                'O': ( 1, lambda x: ord(x)                              ),
+                'P': ( 1, lambda x: isprime(x)                          ),
+                'R': ( 1, lambda x: list(range(1, x+1))                 ),
+                'S': ( 0, lambda: self.remove_duplicates()              ),
+                'T': (-1, lambda: Null                                  ),
+                'U': (-1, lambda: Null                                  ),
+                'V': ( 1, lambda x: self.store(x)                       ),
+                'X': ( 2, lambda x, y: [x for _ in range(y)]            ),
+                'Y': (-1, lambda: Null                                  ),
+                'Z': (-1, lambda: Null                                  ),
 
-                '[': (0, lambda: self.prevcall                          ),
-                ']': (1, lambda x: self.run_lambda(x)                   ),
-                '^': (2, lambda x, y: exponent(x, y)                    ),
-                '_': (2, lambda x, y: subtract(x, y)                    ),
-                '`': (0, lambda: Null                                   ),
+                '[': ( 0, lambda: self.prevcall                         ),
+                ']': ( 1, lambda x: self.run_lambda(x)                  ),
+                '^': ( 2, lambda x, y: exponent(x, y)                   ),
+                '_': ( 2, lambda x, y: subtract(x, y)                   ),
+                '`': (-1, lambda: Null                                  ),
 
-                'a': (0, lambda: list(self.args)                        ),
-                'b': (0, lambda: Null                                   ),
-                'c': (0, lambda: self.stack.clear()                     ),
-                'd': (0, lambda: self.stack[-1]                         ),
-                'e': (2, lambda x, y: x in y                            ),
-                'f': (0, lambda: list(filter(isprime, self.factors()))  ),
-                'g': (0, lambda: Null                                   ),
-                'h': (0, lambda: print(self.stack)                      ),
-                'i': (1, lambda x: int(x)                               ),
-                'j': (1, lambda x: self.join(str(x))                    ),
-                'k': (0, lambda: Null                                   ),
-                'l': (0, lambda: Null                                   ),
-                'm': (0, lambda: min(self.stack)                        ),
-                'n': (0, lambda: self.join()                            ),
-                'o': (2, lambda x, y: x or y                            ),
-                'p': (1, lambda x: None                                 ),
-                'q': (1, lambda x: set(x)                               ),
-                'r': (2, lambda x, y: list(range(x, y))                 ),
-                's': (0, lambda: sum(self.stack)                        ),
-                't': (2, lambda x, y: str(x).split(str(y))              ),
-                'u': (0, lambda: Null                                   ),
-                'v': (1, lambda x: eval(x)                              ),
-                'w': (0, lambda: Null                                   ),
-		'x': (1, lambda x: [self.stack[-1] for _ in range(x)]   ),
-		'y': (1, lambda x: [self.stack.push(self.stack[-1]) for _ in range(x)][:0]          ),
-                'z': (0, lambda: Null                                   ),
+                'a': ( 0, lambda: list(self.args)                       ),
+                'b': (-1, lambda: Null                                  ),
+                'c': ( 0, lambda: self.stack.clear()                    ),
+                'd': ( 0, lambda: self.stack[-1]                        ),
+                'e': ( 2, lambda x, y: x in y                           ),
+                'f': ( 0, lambda: list(filter(isprime, self.factors())) ),
+                'g': (-1, lambda: Null                                  ),
+                'h': ( 0, lambda: print(self.stack)                     ),
+                'i': ( 1, lambda x: int(x)                              ),
+                'j': ( 1, lambda x: self.join(str(x))                   ),
+                'k': (-1, lambda: Null                                  ),
+                'l': (-1, lambda: Null                                  ),
+                'm': ( 0, lambda: min(self.stack)                       ),
+                'n': ( 0, lambda: self.join()                           ),
+                'o': ( 2, lambda x, y: x or y                           ),
+                'p': ( 1, lambda x: None                                ),
+                'q': ( 1, lambda x: set(x)                              ),
+                'r': ( 2, lambda x, y: list(range(x, y))                ),
+                's': ( 0, lambda: sum(self.stack)                       ),
+                't': ( 2, lambda x, y: str(x).split(str(y))             ),
+                'u': (-1, lambda: Null                                  ),
+                'v': ( 1, lambda x: eval(x)                             ),
+                'w': (-1, lambda: Null                                  ),
+		'x': ( 1, lambda x: [self.stack[-1] for _ in range(x)]  ),
+		'y': ( 1, lambda x: [self.stack.push(self.stack[-1]) for _ in range(x)][:0]         ),
+                'z': (-1, lambda: Null                                  ),
                 
-                '|': (1, lambda x: abs(x)                               ),
-                '~': (0, lambda: Null                                   ),
+                '|': ( 1, lambda x: abs(x)                              ),
+                '~': (-1, lambda: Null                                  ),
 
-                'B!':(0, lambda: self.a(op.not_)                        ),
-                'B#':(0, lambda: self.a(sorted)                         ),
-                'B$':(0, lambda: Null                                   ),
-                'B%':(0, lambda: self.a(lambda l: fn.reduce(op.mod, l)) ),
-                'B&':(0, lambda: self.a(lambda l: fn.reduce(op.and_, l))),
-                "B'":(0, lambda: self.a(lambda x: 2 * x)                ),
-                'B(':(0, lambda: self.stacks[self.index - 1].pop()      ),
-                'B)':(0, lambda: self.stacks[(self.index + 1) % len(self.stacks)].pop()             ),
-                'B*':(0, lambda: self.a(lambda l: fn.reduce(op.mul, l)) ),
-                'B+':(0, lambda: self.a(lambda l: fn.reduce(op.add, l)) ),
-                'B/':(0, lambda: self.a(lambda l: fn.reduce(op.truediv, l))                         ),
-                'B:':(0, lambda: Null                                   ),
-                'B<':(0, lambda: Null                                   ),
-                'B=':(0, lambda: self.a(lambda l: self.eq(*l))          ),
-                'B>':(0, lambda: Null                                   ),
-                'B?':(0, lambda: Null                                   ),
-                'B@':(0, lambda: self.a(reversed, True)                 ),
+                'B!':( 0, lambda: self.a(op.not_)                       ),
+                'B#':( 0, lambda: self.a(sorted)                        ),
+                'B$':(-1, lambda: Null                                  ),
+                'B%':( 0, lambda: self.a(lambda l: fn.reduce(op.mod, l))),
+                'B&':( 0, lambda: self.a(lambda l: fn.reduce(op.and_, l))                           ),
+                "B'":( 0, lambda: self.a(lambda x: 2 * x)               ),
+                'B(':( 0, lambda: self.stacks[self.index - 1].pop()     ),
+                'B)':( 0, lambda: self.stacks[(self.index + 1) % len(self.stacks)].pop()            ),
+                'B*':( 0, lambda: self.a(lambda l: fn.reduce(op.mul, l))),
+                'B+':( 0, lambda: self.a(lambda l: fn.reduce(op.add, l))),
+                'B/':( 0, lambda: self.a(lambda l: fn.reduce(op.truediv, l))                        ),
+                'B:':(-1, lambda: Null                                  ),
+                'B<':(-1, lambda: Null                                  ),
+                'B=':( 0, lambda: self.a(lambda l: self.eq(*l))         ),
+                'B>':(-1, lambda: Null                                  ),
+                'B?':(-1, lambda: Null                                  ),
+                'B@':( 0, lambda: self.a(reversed, True)                ),
                 
-                'BA':(0, lambda: self.a(abs)                            ),
-                'BB':(1, lambda x: base(x, 2)                           ),
-                'BC':(0, lambda: self.collect()                         ),
-                'BD':(0, lambda: self.a(lambda i: list(map(int, str(i))))                           ),
-                'BE':(0, lambda: self.a(lambda i: i in self.stack[-1])  ),
-                'BF':(0, lambda: self.flatten()                         ),
-                'BG':(0, lambda: Null                                   ),
-                'BH':(0, lambda: Null                                   ),
-                'BI':(0, lambda: Null                                   ),
-                'BJ':(0, lambda: self.a(lambda i: ''.join(map(str, i))) ),
-                'BK':(0, lambda: GLOBALREGISTER                         ),
-                'BL':(0, lambda: self.a(len)                            ),
-                'BM':(0, lambda: self.a(max)                            ),
-                'BN':(0, lambda: Null                                   ),
-                'BO':(0, lambda: Null                                   ),
-                'BP':(0, lambda: self.a(lambda x: x[1:])                ),
-                'BQ':(0, lambda: self.a(self.remove_duplicates)         ),
-                'BR':(0, lambda: self.a(lambda x: list(range(1, x + 1)))),
-                'BS':(0, lambda: Stack([self.stack[i : i+2] for i in range(len(self.stack) - 1)])   ),
-                'BT':(0, lambda: Null                                   ),
-                'BU':(0, lambda: Null                                   ),
-                'BV':(1, lambda x: exec(x)                              ),
-                'BW':(0, lambda: Stack([i for i in self.stack[:-1] if i not in self.stack[-1]])     ),
-                'BX':(1, lambda x: random.choice(x)                     ),
-                'BY':(0, lambda: self.a(random.choice)                  ),
-                'BZ':(0, lambda: Stack(filter(None, self.stack))        ),
+                'BA':( 0, lambda: self.a(abs)                           ),
+                'BB':( 1, lambda x: base(x, 2)                          ),
+                'BC':( 0, lambda: self.collect()                        ),
+                'BD':( 0, lambda: self.a(lambda i: list(map(int, str(i))))                          ),
+                'BE':( 0, lambda: self.a(lambda i: i in self.stack[-1]) ),
+                'BF':( 0, lambda: self.flatten()                        ),
+                'BG':(-1, lambda: Null                                  ),
+                'BH':(-1, lambda: Null                                  ),
+                'BI':(-1, lambda: Null                                  ),
+                'BJ':( 0, lambda: self.a(lambda i: ''.join(map(str, i)))),
+                'BK':( 0, lambda: GLOBALREGISTER                        ),
+                'BL':( 0, lambda: self.a(len)                           ),
+                'BM':( 0, lambda: self.a(max)                           ),
+                'BN':(-1, lambda: Null                                  ),
+                'BO':(-1, lambda: Null                                  ),
+                'BP':( 0, lambda: self.a(lambda x: x[1:])               ),
+                'BQ':( 0, lambda: self.a(self.remove_duplicates)        ),
+                'BR':( 0, lambda: self.a(lambda x: list(range(1, x + 1)))                           ),
+                'BS':( 0, lambda: Stack([self.stack[i : i+2] for i in range(len(self.stack) - 1)])  ),
+                'BT':(-1, lambda: Null                                  ),
+                'BU':(-1, lambda: Null                                  ),
+                'BV':( 1, lambda x: exec(x)                             ),
+                'BW':( 0, lambda: Stack([i for i in self.stack[:-1] if i not in self.stack[-1]])    ),
+                'BX':( 1, lambda x: random.choice(x)                    ),
+                'BY':( 0, lambda: self.a(random.choice)                 ),
+                'BZ':( 0, lambda: Stack(filter(None, self.stack))       ),
 
-                'B]':(0, lambda: self.wrap()                            ),
-                'B[':(0, lambda: self.a(lambda l: [l])                  ),
-                'B^':(0, lambda: self.a(lambda l: fn.reduce(op.xor, l)) ),
-                'B_':(0, lambda: self.a(lambda l: fn.reduce(op.sub, l)) ),
-                'B`':(0, lambda: self.a(lambda l: fn.reduce(op.pow, l)) ),
+                'B]':( 0, lambda: self.wrap()                           ),
+                'B[':( 0, lambda: self.a(lambda l: [l])                 ),
+                'B^':( 0, lambda: self.a(lambda l: fn.reduce(op.xor, l))),
+                'B_':( 0, lambda: self.a(lambda l: fn.reduce(op.sub, l))),
+                'B`':( 0, lambda: self.a(lambda l: fn.reduce(op.pow, l))),
 
-                'Ba':(2, lambda x, y: x & y                             ),
-                'Bb':(2, lambda x, y: unbase(x, y)                      ),
-                'Bc':(0, lambda: self.columns()                         ),
-                'Bd':(0, lambda: self.a(lambda l: fn.reduce(op.floordiv, l))                        ),
-                'Be':(1, lambda x: [i in self.stack[-1] for i in x]     ),
-                'Bf':(1, lambda x: ~x                                   ),
-                'Bg':(0, lambda: Null                                   ),
-                'Bh':(0, lambda: Null                                   ),
-                'Bi':(0, lambda: self.a(int)                            ),
-                'Bj':(0, lambda: self.a(isprime)                        ),
-                'Bk':(1, lambda x: self.assign(x)                       ),
-                'Bl':(0, lambda: Null                                   ),
-                'Bm':(0, lambda: self.a(min)                            ),
-                'Bn':(0, lambda: self.a(lambda i: -i)                   ),
-                'Bo':(2, lambda x, y: x | y                             ),
-                'Bp':(0, lambda: self.a(lambda x: x[:-1])               ),
-                'Bq':(0, lambda: Null                                   ),
-                'Br':(0, lambda: Null                                   ),
-                'Bs':(0, lambda: self.a(sum)                            ),
-                'Bt':(0, lambda: Null                                   ),
-                'Bu':(0, lambda: Null                                   ),
-                'Bv':(0, lambda: self.a(lambda i: int(''.join(map(str, i))))                        ),
-                'Bw':(0, lambda: Stack([i for i in self.stack[:-1] if i in self.stack[-1]])         ),
-                'Bx':(2, lambda x, y: x ^ y                             ),
-                'By':(0, lambda: Null                                   ),
-                'Bz':(0, lambda: Null                                   ),
+                'Ba':( 2, lambda x, y: x & y                            ),
+                'Bb':( 2, lambda x, y: unbase(x, y)                     ),
+                'Bc':( 0, lambda: self.columns()                        ),
+                'Bd':( 0, lambda: self.a(lambda l: fn.reduce(op.floordiv, l))                       ),
+                'Be':( 1, lambda x: [i in self.stack[-1] for i in x]    ),
+                'Bf':( 1, lambda x: ~x                                  ),
+                'Bg':(-1, lambda: Null                                  ),
+                'Bh':(-1, lambda: Null                                  ),
+                'Bi':( 0, lambda: self.a(int)                           ),
+                'Bj':( 0, lambda: self.a(isprime)                       ),
+                'Bk':( 1, lambda x: self.assign(x)                      ),
+                'Bl':(-1, lambda: Null                                  ),
+                'Bm':( 0, lambda: self.a(min)                           ),
+                'Bn':( 0, lambda: self.a(lambda i: -i)                  ),
+                'Bo':( 2, lambda x, y: x | y                            ),
+                'Bp':( 0, lambda: self.a(lambda x: x[:-1])              ),
+                'Bq':(-1, lambda: Null                                  ),
+                'Br':(-1, lambda: Null                                  ),
+                'Bs':( 0, lambda: self.a(sum)                           ),
+                'Bt':(-1, lambda: Null                                  ),
+                'Bu':(-1, lambda: Null                                  ),
+                'Bv':( 0, lambda: self.a(lambda i: int(''.join(map(str, i))))                       ),
+                'Bw':( 0, lambda: Stack([i for i in self.stack[:-1] if i in self.stack[-1]])        ),
+                'Bx':( 2, lambda x, y: x ^ y                            ),
+                'By':(-1, lambda: Null                                  ),
+                'Bz':(-1, lambda: Null                                  ),
                 
-                'B|':(0, lambda: self.a(lambda l: fn.reduce(op.or_, l)) ),
-                'B~':(0, lambda: self.a(op.inv)                         ),
+                'B|':( 0, lambda: self.a(lambda l: fn.reduce(op.or_, l)) ),
+                'B~':( 0, lambda: self.a(op.inv)                         ),
                 
-                'b!':(1, lambda x: list(map(lambda a: int(not a), x))   ),
-                'b#':(0, lambda: Null                                   ),
-                'b$':(0, lambda: Null                                   ),
-                'b%':(1, lambda x: fn.reduce(op.mod, x)                 ),
-                'b&':(1, lambda x: fn.reduce(op.and_, x)                ),
-                "b'":(1, lambda x: [i * 2 for i in x]                   ),
-                'b(':(1, lambda x: self.stacks[self.index - 1].push(x)  ),
-                'b)':(1, lambda x: self.stacks[(self.index + 1) % len(self.stacks)].push(x)         ),
-                'b*':(1, lambda x: fn.reduce(op.mul, x)                 ),
-                'b+':(1, lambda x: fn.reduce(op.add, x)                 ),
-                'b/':(1, lambda x: fn.reduce(op.truediv, x)             ),
-                'b:':(0, lambda: Null                                   ),
-                'b<':(0, lambda: Null                                   ),
-                'b=':(1, lambda x: self.eq(*x)                          ),
-                'b>':(0, lambda: Null                                   ),
-                'b?':(0, lambda: Null                                   ),
-                'b@':(0, lambda: Null                                   ),
+                'b!':( 1, lambda x: list(map(lambda a: int(not a), x))   ),
+                'b#':(-1, lambda: Null                                   ),
+                'b$':(-1, lambda: Null                                   ),
+                'b%':( 1, lambda x: fn.reduce(op.mod, x)                 ),
+                'b&':( 1, lambda x: fn.reduce(op.and_, x)                ),
+                "b'":( 1, lambda x: [i * 2 for i in x]                   ),
+                'b(':( 1, lambda x: self.stacks[self.index - 1].push(x)  ),
+                'b)':( 1, lambda x: self.stacks[(self.index + 1) % len(self.stacks)].push(x)         ),
+                'b*':( 1, lambda x: fn.reduce(op.mul, x)                 ),
+                'b+':( 1, lambda x: fn.reduce(op.add, x)                 ),
+                'b/':( 1, lambda x: fn.reduce(op.truediv, x)             ),
+                'b:':(-1, lambda: Null                                   ),
+                'b<':(-1, lambda: Null                                   ),
+                'b=':( 1, lambda x: self.eq(*x)                          ),
+                'b>':(-1, lambda: Null                                   ),
+                'b?':(-1, lambda: Null                                   ),
+                'b@':(-1, lambda: Null                                   ),
 
-                'bA':(0, lambda: Null                                   ),
-                'bB':(0, lambda: self.pad_bin()                         ),
-                'bC':(0, lambda: Null                                   ),
-                'bD':(0, lambda: Null                                   ),
-                'bE':(0, lambda: Null                                   ),
-                'bF':(1, lambda x: self.flatten(x)                      ),
-                'bG':(0, lambda: Null                                   ),
-                'bH':(0, lambda: Null                                   ),
-                'bI':(0, lambda: Null                                   ),
-                'bJ':(0, lambda: Null                                   ),
-                'bK':(0, lambda: Null                                   ),
-                'bL':(1, lambda x: len(x)                               ),
-                'bM':(1, lambda x: max(x)                               ),
-                'bN':(0, lambda: Null                                   ),
-                'bO':(0, lambda: Null                                   ),
-                'bP':(0, lambda: Null                                   ),
-                'bQ':(0, lambda: Null                                   ),
-                'bR':(1, lambda x: x[::-1]                              ),
-                'bS':(0, lambda: Null                                   ),
-                'bT':(0, lambda: Null                                   ),
-                'bU':(1, lambda x: self.stack.push(*x)                  ),
-                'bV':(1, lambda x: self.selfexec(x)                     ),
-                'bW':(0, lambda: Null                                   ),
-                'bX':(0, lambda: Null                                   ),
-                'bY':(0, lambda: Null                                   ),
-                'bZ':(0, lambda: Null                                   ),
+                'bA':(-1, lambda: Null                                   ),
+                'bB':( 0, lambda: self.pad_bin()                         ),
+                'bC':(-1, lambda: Null                                   ),
+                'bD':(-1, lambda: Null                                   ),
+                'bE':(-1, lambda: Null                                   ),
+                'bF':( 1, lambda x: self.flatten(x)                      ),
+                'bG':(-1, lambda: Null                                   ),
+                'bH':(-1, lambda: Null                                   ),
+                'bI':(-1, lambda: Null                                   ),
+                'bJ':(-1, lambda: Null                                   ),
+                'bK':(-1, lambda: Null                                   ),
+                'bL':( 1, lambda x: len(x)                               ),
+                'bM':( 1, lambda x: max(x)                               ),
+                'bN':(-1, lambda: Null                                   ),
+                'bO':(-1, lambda: Null                                   ),
+                'bP':(-1, lambda: Null                                   ),
+                'bQ':(-1, lambda: Null                                   ),
+                'bR':( 1, lambda x: x[::-1]                              ),
+                'bS':(-1, lambda: Null                                   ),
+                'bT':(-1, lambda: Null                                   ),
+                'bU':( 1, lambda x: self.stack.push(*x)                  ),
+                'bV':( 1, lambda x: self.selfexec(x)                     ),
+                'bW':(-1, lambda: Null                                   ),
+                'bX':(-1, lambda: Null                                   ),
+                'bY':(-1, lambda: Null                                   ),
+                'bZ':(-1, lambda: Null                                   ),
 
-                'b[':(0, lambda: Null                                   ),
-                'b]':(1, lambda x: [x]                                  ),
-                'b^':(1, lambda x: fn.reduce(op.xor, x)                 ),
-                'b_':(1, lambda x: fn.reduce(op.sub, x)                 ),
-                'b`':(1, lambda x: fn.reduce(op.pow, x)                 ),
+                'b[':(-1, lambda: Null                                   ),
+                'b]':( 1, lambda x: [x]                                  ),
+                'b^':( 1, lambda x: fn.reduce(op.xor, x)                 ),
+                'b_':( 1, lambda x: fn.reduce(op.sub, x)                 ),
+                'b`':( 1, lambda x: fn.reduce(op.pow, x)                 ),
 
-                'ba':(0, lambda: Null                                   ),
-                'bb':(2, lambda x, y: base(x, y)                        ),
-                'bc':(0, lambda: Null                                   ),
-                'bd':(1, lambda x: fn.reduce(op.floordiv, x)            ),
-                'be':(0, lambda: Null                                   ),
-                'bf':(0, lambda: Null                                   ),
-                'bg':(0, lambda: Null                                   ),
-                'bh':(0, lambda: Null                                   ),
-                'bi':(1, lambda x: x                                    ),
-                'bj':(0, lambda: Null                                   ),
-                'bk':(0, lambda: Null                                   ),
-                'bl':(0, lambda: Null                                   ),
-                'bm':(1, lambda x: min(x)                               ),
-                'bn':(0, lambda: Null                                   ),
-                'bo':(0, lambda: Null                                   ),
-                'bp':(0, lambda: Null                                   ),
-                'bq':(0, lambda: Null                                   ),
-                'br':(0, lambda: Null                                   ),
-                'bs':(0, lambda: Null                                   ),
-                'bt':(0, lambda: Null                                   ),
-                'bu':(0, lambda: Null                                   ),
-                'bv':(0, lambda: Null                                   ),
-                'bw':(0, lambda: Null                                   ),
-                'bx':(0, lambda: Null                                   ),
-                'by':(0, lambda: Null                                   ),
-                'bz':(0, lambda: Null                                   ),
+                'ba':(-1, lambda: Null                                   ),
+                'bb':( 2, lambda x, y: base(x, y)                        ),
+                'bc':(-1, lambda: Null                                   ),
+                'bd':( 1, lambda x: fn.reduce(op.floordiv, x)            ),
+                'be':(-1, lambda: Null                                   ),
+                'bf':(-1, lambda: Null                                   ),
+                'bg':(-1, lambda: Null                                   ),
+                'bh':(-1, lambda: Null                                   ),
+                'bi':( 1, lambda x: x                                    ),
+                'bj':(-1, lambda: Null                                   ),
+                'bk':(-1, lambda: Null                                   ),
+                'bl':(-1, lambda: Null                                   ),
+                'bm':( 1, lambda x: min(x)                               ),
+                'bn':(-1, lambda: Null                                   ),
+                'bo':(-1, lambda: Null                                   ),
+                'bp':(-1, lambda: Null                                   ),
+                'bq':(-1, lambda: Null                                   ),
+                'br':(-1, lambda: Null                                   ),
+                'bs':(-1, lambda: Null                                   ),
+                'bt':(-1, lambda: Null                                   ),
+                'bu':(-1, lambda: Null                                   ),
+                'bv':(-1, lambda: Null                                   ),
+                'bw':(-1, lambda: Null                                   ),
+                'bx':(-1, lambda: Null                                   ),
+                'by':(-1, lambda: Null                                   ),
+                'bz':(-1, lambda: Null                                   ),
                 
-                'b|':(1, lambda x: fn.reduce(op.or_, x)                 ),
-                'b~':(1, lambda x: list(map(op.inv, x))                 ),
+                'b|':( 1, lambda x: fn.reduce(op.or_, x)                 ),
+                'b~':( 1, lambda x: list(map(op.inv, x))                 ),
                }
 
     def a(self, func, array = False):
@@ -794,6 +1066,11 @@ class StackScript:
         if arity == 1:
             self.stacks[self.index] = Stack(sorted(self.stack, key = cmd))
 
+    def quicksplat(self, cmd):
+        arity, cmd = cmd
+        args = [self.stack.pop() for _ in range(arity)]
+        self.stack.extend(cmd(*args))
+
     def quickstareach(self, cmd):
         arity, cmd = cmd
         self.stacks[self.index] = Stack(it.starmap(cmd, self.stack))
@@ -921,15 +1198,6 @@ class Function:
 
 class Script:
 
-    def process(self, lines):
-        final = ['']
-        for line in lines:
-            if line.startswith(('  ', '\t')):
-                final[-1] += line.split(';')[0].strip()
-            else:
-                final.append(line.split(';')[0].strip())
-        return list(filter(None, map(lambda a: a.strip(','), final)))
-
     def __init__(self,code, inputs, impfunc, tokens):
 
         self.NILADS = r'!~&#@NPOHSQVG'
@@ -937,7 +1205,7 @@ class Script:
         self.CONSTRUCTS = 'FWEIDL'
         self.FLAGS = r'*^?:!~'
 
-        self.code = self.process(code.split('\n'))
+        self.code = process(code.split('\n'))
 
         self.called = False
         self.implicit = False
@@ -1256,6 +1524,7 @@ class Script:
         return random.randint(y, self.x)
 
 addpp.Script = Script
+addpp.VerboseScript = VerboseScript
 
 if __name__ == '__main__':
     
@@ -1271,22 +1540,30 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--implicit', help = 'Implicitly call a function at the end', action = a)
     parser.add_argument('-t', '--tokens', help = 'Show function tokens', action = a)
     parser.add_argument('-u', '--utf', help = 'Use utf-8 encoding rather than Add++', action = a)
+    parser.add_argument('-vo', '--verbose-out', help = 'Output golfed code from verbose', action = a)
+    parser.add_argument('-vh', '--version-help', help = 'Output all versions available', action = a)
+    parser.add_argument('-o', '--suppress', help = 'Suppress output', action = a)
     
     parser.add_argument('--version', help = 'Specify version to use', metavar = 'VERSION')
     parser.add_argument('--specify', help = 'Specify implcit function', metavar = 'FUNCTION')
 
     verbose = parser.add_mutually_exclusive_group()
     verbose.add_argument('-va', '--verbose-all', help = 'Make all sections verbose', action = a)
-    verbose.add_argument('-vo', '--verbose-out', help = 'Output golfed code from verbose', action = a)
     verbose.add_argument('-vv', '--verbose-van', help = 'Make vanilla code verbose', action = a)
-                         
+    verbose.add_argument('-vf', '--verbose-fun', help = 'Make function code verbose', action = a)
+
     parser.add_argument('program')
     parser.add_argument('input', nargs = '*', type = eval_)
     settings = parser.parse_args()
 
+    if settings.version_help:
+        print(*list(filter(
+                lambda a: a not in ['__init__.py', 'error.py'] and a.endswith('.py'),
+                os.listdir('vers'))),
+              sep = '\n', file = sys.stderr)
+
     if settings.version:
         settings.version = convert_version(settings.version)
-        # print(settings.version)
 
     if settings.version:
         settings.verfile, settings.vernum = settings.version
@@ -1295,7 +1572,9 @@ if __name__ == '__main__':
         settings.verfile, settings.vernum = None, VERSION
         del settings.version
 
-    settings.verbose = any([settings.verbose_all, settings.verbose_out, settings.verbose_van])
+    settings.verbose = [settings.verbose_all, settings.verbose_out,
+                        settings.verbose_fun, settings.verbose_van]
+    settings.useverbose = any(settings.verbose)
 
     if settings.vernum != VERSION:
         addpp = __import__(settings.verfile)
@@ -1313,17 +1592,16 @@ if __name__ == '__main__':
             for ordinal in contents:
                 code += addpp.code_page[ordinal]
 
-    if settings.verbose and settings.vernum >= 5:
-        executor = addpp.VerboseScript
+    if settings.useverbose and settings.vernum >= 5:
+        executor = lambda c, i, f, t: addpp.VerboseScript(c, i, f, t,
+                                                *(settings.verbose + [settings]))
     else:
         executor = addpp.Script
 
-    code = code.replace('\r\n', '\n')
+    settings.code = code.replace('\r\n', '\n')
 
-    if settings.error:
-        executor(code, settings.input, [settings.implicit, settings.specify], settings.tokens)
+    if settings.suppress:
+        with suppress_output():
+            initiate(settings, executor)
     else:
-        try:
-            executor(code, settings.input, [settings.implicit, settings.specify], settings.tokens)
-        except Exception as err:
-            print(err, file = sys.stderr)
+        initiate(settings, executor)
