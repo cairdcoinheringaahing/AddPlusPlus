@@ -611,8 +611,7 @@ class StackScript:
                 hungry = self.QUICKS[tokens[index]][0]
                 quick = tokens[index]
                 
-                if type(chain[-1]) != list:
-                    chain.append([quick])
+                chain.append([quick])
 
                 index += 1
                 
