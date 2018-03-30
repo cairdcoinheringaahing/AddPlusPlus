@@ -602,8 +602,8 @@ class StackScript:
                 pass
             else:
                 tokens.append(f)
-
-        chain = [None]
+                
+        chain = []
 
         index = 0
         while index < len(tokens):
@@ -728,7 +728,7 @@ class StackScript:
                 'r': ( 2, lambda x, y: list(range(x, y))                ),
                 's': ( 0, lambda: sum(self.stack)                       ),
                 't': ( 2, lambda x, y: str(x).split(str(y))             ),
-                'u': (-1, lambda: Null                                  ),
+                'u': ( 1, lambda x: self.stack.push(*x)                 ),
                 'v': ( 1, lambda x: eval(x)                             ),
                 'w': (-1, lambda: Null                                  ),
 		'x': ( 1, lambda x: [self.stack[-1] for _ in range(x)]  ),
@@ -762,7 +762,7 @@ class StackScript:
                 'BD':( 0, lambda: self.a(lambda i: list(map(int, str(i))))                          ),
                 'BE':( 0, lambda: self.a(lambda i: i in self.stack[-1]) ),
                 'BF':( 0, lambda: self.flatten()                        ),
-                'BG':(-1, lambda: Null                                  ),
+                'BG':( 1, lambda x: [list(g) for k, g in it.groupby(x)] ),
                 'BH':(-1, lambda: Null                                  ),
                 'BI':(-1, lambda: Null                                  ),
                 'BJ':( 0, lambda: self.a(lambda i: ''.join(map(str, i)))),
@@ -1068,7 +1068,10 @@ class StackScript:
     def quicksplat(self, cmd):
         arity, cmd = cmd
         args = [self.stack.pop() for _ in range(arity)]
-        self.stack.extend(cmd(*args))
+        if args:
+            self.stack.extend(cmd(*args))
+        else:
+            self.stack.extend(self.stack.pop())
 
     def quickstareach(self, cmd):
         arity, cmd = cmd
