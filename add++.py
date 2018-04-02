@@ -500,7 +500,11 @@ class StackScript:
                 self.stack.push(self.prevcall)
                 
             elif isdigit(cmd):
-                self.stack.push(eval_(cmd))
+                while cmd.startswith('0'):
+                    self.stack.push(0)
+                    cmd = cmd[1:]
+                if cmd:
+                    self.stack.push(eval_(cmd))
             else:
                 
                 cmd = cmd.strip()
@@ -615,10 +619,11 @@ class StackScript:
 
                 index += 1
                 
-                if hungry < 0:
+                if hungry == -1:
                     while tokens[index] != quick:
                         chain[-1] += tokens[index]
                         index += 1
+                    index += 1
                 else:
                     for _ in range(hungry):
                         chain[-1] += tokens[index]
