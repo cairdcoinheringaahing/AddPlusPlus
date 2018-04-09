@@ -733,7 +733,7 @@ class StackScript:
                 'r': ( 2, lambda x, y: list(range(x, y))                ),
                 's': ( 0, lambda: sum(self.stack)                       ),
                 't': ( 2, lambda x, y: str(x).split(str(y))             ),
-                'u': ( 1, lambda x: self.stack.push(*x)                 ),
+                'u': (-1, lambda: Null                                  ),
                 'v': ( 1, lambda x: eval(x)                             ),
                 'w': (-1, lambda: Null                                  ),
 		'x': ( 1, lambda x: [self.stack[-1] for _ in range(x)]  ),
