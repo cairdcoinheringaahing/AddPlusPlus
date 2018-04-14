@@ -1055,7 +1055,7 @@ class StackScript:
 
     def quickreduce(self, cmd):
         arity, cmd = cmd
-        self.stack.push(fn.reduce(cmd, self.stack))
+        self.stack.push(fn.reduce(cmd, self.stack, 1))
 
     def quickreverse(self, cmd):
         arity, cmd = cmd
