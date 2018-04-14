@@ -529,7 +529,11 @@ class StackScript:
                 if result == Null:
                     raise error.InvalidSymbolError(line, outer[line-1], cmd)
 
-                if result is not None and result != []:
+                if type(result) == Stack:
+                    self.stack.clear()
+                    self.stack.push(*result)
+
+                elif result is not None and result != []:
                     self.stack.push(result)
 
     def runquick(self, quick, cmd):
@@ -633,6 +637,7 @@ class StackScript:
                 index += 1
 
         chain = list(filter(None, chain))
+        chain = list(map(lambda a: [a[0], ''.join(a[1:]) if type(a) == list else a], chain))
 
         if output:
             print(chain)
@@ -664,7 +669,7 @@ class StackScript:
     @property
     def COMMANDS(self):
         return {
-                '!': ( 1, lambda x: not x                               ),
+                '!': ( 1, lambda x: int(not x)                          ),
                 '#': ( 0, lambda: self.stack.sort()                     ),
                 '$': ( 0, lambda: self.stack.swap()                     ),
                 '%': ( 2, lambda x, y: modulo(x, y)                     ),
@@ -676,9 +681,9 @@ class StackScript:
                 '+': ( 2, lambda x, y: add(x, y)                        ),
                 '/': ( 2, lambda x, y: divide(x, y)                     ),
                 ':': (-1, lambda: Null                                  ),
-                '<': ( 2, lambda x, y: x < y                            ),
-                '=': ( 2, lambda x, y: x == y                           ),
-                '>': ( 2, lambda x, y: x > y                            ),
+                '<': ( 2, lambda x, y: int(x < y)                       ),
+                '=': ( 2, lambda x, y: int(x == y)                      ),
+                '>': ( 2, lambda x, y: int(x > y)                       ),
                 '?': ( 1, lambda x: (x > 0) - (x < 0)                   ),
                 '@': ( 0, lambda: self.stack.reverse()                  ),
                 
@@ -730,20 +735,20 @@ class StackScript:
                 'o': ( 2, lambda x, y: x or y                           ),
                 'p': ( 1, lambda x: None                                ),
                 'q': ( 1, lambda x: set(x)                              ),
-                'r': ( 2, lambda x, y: list(range(x, y))                ),
+                'r': ( 2, lambda x, y: list(range(x, y+1))              ),
                 's': ( 0, lambda: sum(self.stack)                       ),
                 't': ( 2, lambda x, y: str(x).split(str(y))             ),
-                'u': (-1, lambda: Null                                  ),
+                'u': ( 1, lambda x: self.stack.push(*x)                 ),
                 'v': ( 1, lambda x: eval(x)                             ),
                 'w': (-1, lambda: Null                                  ),
 		'x': ( 1, lambda x: [self.stack[-1] for _ in range(x)]  ),
 		'y': ( 1, lambda x: [self.stack.push(self.stack[-1]) for _ in range(x)][:0]         ),
-                'z': (-1, lambda: Null                                  ),
+                'z': ( 2, lambda x, y: list(map(list, zip(x, y)))       ),
                 
                 '|': ( 1, lambda x: abs(x)                              ),
                 '~': (-1, lambda: Null                                  ),
 
-                'B!':( 0, lambda: self.a(op.not_)                       ),
+                'B!':( 0, lambda: self.a(lambda a: int(not a))          ),
                 'B#':( 0, lambda: self.a(sorted)                        ),
                 'B$':(-1, lambda: Null                                  ),
                 'B%':( 0, lambda: self.a(lambda l: fn.reduce(op.mod, l))),
@@ -765,7 +770,7 @@ class StackScript:
                 'BB':( 1, lambda x: base(x, 2)                          ),
                 'BC':( 0, lambda: self.collect()                        ),
                 'BD':( 0, lambda: self.a(lambda i: list(map(int, str(i))))                          ),
-                'BE':( 0, lambda: self.a(lambda i: i in self.stack[-1]) ),
+                'BE':( 0, lambda: self.a(lambda i: int(i in self.stack[-1]))                        ),
                 'BF':( 0, lambda: self.flatten()                        ),
                 'BG':( 1, lambda x: [list(g) for k, g in it.groupby(x)] ),
                 'BH':(-1, lambda: Null                                  ),
@@ -798,7 +803,7 @@ class StackScript:
                 'Bb':( 2, lambda x, y: unbase(x, y)                     ),
                 'Bc':( 0, lambda: self.columns()                        ),
                 'Bd':( 0, lambda: self.a(lambda l: fn.reduce(op.floordiv, l))                       ),
-                'Be':( 1, lambda x: [i in self.stack[-1] for i in x]    ),
+                'Be':( 1, lambda x: [int(i in self.stack[-1])for i in x]),
                 'Bf':( 1, lambda x: ~x                                  ),
                 'Bg':(-1, lambda: Null                                  ),
                 'Bh':(-1, lambda: Null                                  ),
@@ -938,7 +943,7 @@ class StackScript:
         
     def eq(self, *args):
         incs = [args[i] == args[i-1] for i in range(1, len(args))]
-        return all(incs)
+        return int(all(incs))
     
     def factors(self):
         lof = []
@@ -1055,7 +1060,7 @@ class StackScript:
 
     def quickreduce(self, cmd):
         arity, cmd = cmd
-        self.stack.push(fn.reduce(cmd, self.stack, 1))
+        self.stack.push(fn.reduce(cmd, self.stack))
 
     def quickreverse(self, cmd):
         arity, cmd = cmd
