@@ -637,7 +637,7 @@ class StackScript:
                 index += 1
 
         chain = list(filter(None, chain))
-        chain = list(map(lambda a: [a[0], ''.join(a[1:]) if type(a) == list else a], chain))
+        chain = list(map(lambda a: [a[0], ''.join(a[1:])] if a[0] in self.quicks else a, chain))
 
         if output:
             print(chain)
