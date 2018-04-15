@@ -138,6 +138,13 @@ def unbase(digits, base):
         total += digit * base ** power
     return total
 
+def deduplicate(array):
+    final = []
+    for value in array:
+        if value not in final:
+            final.append(value)
+    return final
+
 def initiate(settings, executor):
     if settings.error:
         executor(settings.code, settings.input,
@@ -734,7 +741,7 @@ class StackScript:
                 'n': ( 0, lambda: self.join()                           ),
                 'o': ( 2, lambda x, y: x or y                           ),
                 'p': ( 1, lambda x: None                                ),
-                'q': ( 1, lambda x: set(x)                              ),
+                'q': ( 1, lambda x: deduplicate(x)                      ),
                 'r': ( 2, lambda x, y: list(range(x, y+1))              ),
                 's': ( 0, lambda: sum(self.stack)                       ),
                 't': ( 2, lambda x, y: str(x).split(str(y))             ),
