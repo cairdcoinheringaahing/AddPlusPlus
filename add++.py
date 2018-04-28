@@ -698,7 +698,7 @@ class StackScript:
                 'B': ( 1, lambda x: self.stack[:x]                      ),
                 'C': ( 1, lambda x: chr(x)                              ),
                 'D': ( 1, lambda x: self.stack[-x]                      ),
-                'E': ( 1, lambda x: list(map(list, enumerate(x)))       ),
+                'E': ( 1, lambda x: list(map(list, enumerate(x, 1)))    ),
                 'F': ( 0, lambda: self.stack.push(*self.factors())      ),
                 'G': ( 0, lambda: self.stack.push(self.register)        ),
                 'H': ( 0, lambda: print(''.join(map(str, self.stack)))  ),
