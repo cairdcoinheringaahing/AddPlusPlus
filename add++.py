@@ -687,7 +687,7 @@ class StackScript:
                 '*': ( 2, lambda x, y: multiply(x, y)                   ),
                 '+': ( 2, lambda x, y: add(x, y)                        ),
                 '/': ( 2, lambda x, y: divide(x, y)                     ),
-                ':': (-1, lambda: Null                                  ),
+                ':': ( 2, lambda x, y: x[y]                             ),
                 '<': ( 2, lambda x, y: int(x < y)                       ),
                 '=': ( 2, lambda x, y: int(x == y)                      ),
                 '>': ( 2, lambda x, y: int(x > y)                       ),
