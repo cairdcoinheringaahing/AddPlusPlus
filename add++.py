@@ -12,7 +12,7 @@ import sys
 import error
 
 GLOBALREGISTER = None
-VERSION = 5.1
+VERSION = 5.2
 
 class addpp(object):
     def __setattr__(self, name, value):
@@ -712,7 +712,7 @@ class StackScript:
                 'P': ( 1, lambda x: isprime(x)                          ),
                 'R': ( 1, lambda x: list(range(1, x+1))                 ),
                 'S': ( 0, lambda: self.remove_duplicates()              ),
-                'T': (-1, lambda: Null                                  ),
+                'T': ( 2, lambda x, y: [x[z: z+y] for z in range(0, len(x) - y + 1, y)] + ([x[len(x) - y + 1:]] if len(x) % y else [])	),
                 'U': (-1, lambda: Null                                  ),
                 'V': ( 1, lambda x: self.store(x)                       ),
                 'X': ( 2, lambda x, y: [x for _ in range(y)]            ),
