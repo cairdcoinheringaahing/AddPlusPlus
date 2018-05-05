@@ -12,7 +12,9 @@ import sys
 import error
 
 GLOBALREGISTER = None
-VERSION = 5.2
+VERSION = 5.3
+
+identity = lambda a: a
 
 class addpp(object):
     def __setattr__(self, name, value):
@@ -473,9 +475,11 @@ class StackScript:
             
             if cmd[0] == '"':
                 self.stack.push(cmd[1:])
+                
             elif type(cmd) == list:
                 quick, *cmd = cmd
                 self.runquick(quick, cmd)
+                
             elif cmd[0] == '{' and cmd[-1] == '}':
                 
                 if cmd[1] == ',':
@@ -507,9 +511,11 @@ class StackScript:
                 self.stack.push(self.prevcall)
                 
             elif isdigit(cmd):
+                
                 while cmd.startswith('0'):
                     self.stack.push(0)
                     cmd = cmd[1:]
+                    
                 if cmd:
                     self.stack.push(eval_(cmd))
             else:
@@ -518,6 +524,7 @@ class StackScript:
                 
                 if not cmd:
                     continue
+                
                 if cmd == 'Q':
                     if self.stack.pop():
                         cont = -1
@@ -528,8 +535,10 @@ class StackScript:
                     if arity < 0:
                         arity = 0
                     result = command(*[self.stack.pop() for _ in range(arity)])
+                    
                 except TypeError:
                     raise error.IncongruentTypesError(line, outer[line-1], cmd)
+                
                 except:
                     raise error.EmptyStackError(line, outer[line-1])
                     
@@ -551,14 +560,27 @@ class StackScript:
             cmd = ''.join(cmd)
             func = self.functions[cmd[1:-1]]
             self.QUICKS[quick][1]((func.args, func))
+            
         elif type(cmd) == list:
-            self.QUICKS[quick][1](cmd)
+            ret = self.QUICKS[quick][1](cmd, self.stack.pop())
+            
         else:
+            
             cmd = ''.join(cmd).strip()
             if cmd not in self.COMMANDS or self.COMMANDS[cmd][0] == -1:
                 self.runquick(quick, '{' + cmd + '}')
+                
             else:
-                self.QUICKS[quick][1](self.COMMANDS[cmd])
+                ret = self.QUICKS[quick][1](self.COMMANDS[cmd], self.stack.pop())
+
+        ret, op = ret
+
+        if op == 0:
+            self.stacks[self.index] = ret
+        if op == 1:
+            self.stacks[self.index].push(ret)
+        if op == 2:
+            self.stacks[self.index].extend(ret)
 
     def tokenize(self, text, output):
         
@@ -629,22 +651,56 @@ class StackScript:
                 chain.append([quick])
 
                 index += 1
-                
-                if hungry == -1:
+
+                if hungry:
+                    for i in range(2):
+                        if tokens[index] in self.quicks:
+                            chain[-1] += tokens[index]
+                            index += 1
+                        
+                    chain[-1] += tokens[index]
+                    index += 1
+                    
+                else:
                     while tokens[index] != quick:
                         chain[-1] += tokens[index]
                         index += 1
                     index += 1
-                else:
-                    for _ in range(hungry):
-                        chain[-1] += tokens[index]
-                        index += 1
             else:
                 chain.append(tokens[index])
                 index += 1
 
         chain = list(filter(None, chain))
-        chain = list(map(lambda a: [a[0], ''.join(a[1:])] if a[0] in self.quicks else a, chain))
+
+        for index, element in enumerate(chain):
+            if isinstance(element, list):
+                tkns = []
+                last = False
+                for char in element:
+                    if last == 2:
+                        tkns[-1] += char
+                        last = False
+                        continue
+                        
+                    if char == '{':
+                        tkns.append('')
+                        last = True
+
+                    if char == '}':
+                        tkns[-1] += '}'
+                        last = False
+                        continue
+
+                    if char in 'Bb':
+                        tkns.append(char)
+                        last = 2
+                        continue
+                        
+                    if last:
+                        tkns[-1] += char
+                    else:
+                        tkns.append(char)
+                chain[index] = tkns
 
         if output:
             print(chain)
@@ -669,7 +725,7 @@ class StackScript:
                 '¢': ( 1, self.quickgroupby                             ),
                 'Ñ': ( 1, self.quickneighbours                          ),
                 'Ω': ( 1, self.quickreverse                             ),
-                '¿': (-1, self.quickternary                             ),
+                '¿': ( 0, self.quickternary                             ),
                 'ß': ( 1, self.quicksplat                               ),
                }
     
@@ -881,7 +937,7 @@ class StackScript:
                 'bY':(-1, lambda: Null                                   ),
                 'bZ':(-1, lambda: Null                                   ),
 
-                'b[':(-1, lambda: Null                                   ),
+                'b[':( 2, lambda x, y: [x, y]                            ),
                 'b]':( 1, lambda x: [x]                                  ),
                 'b^':( 1, lambda x: fn.reduce(op.xor, x)                 ),
                 'b_':( 1, lambda x: fn.reduce(op.sub, x)                 ),
@@ -981,126 +1037,467 @@ class StackScript:
         for i in range(len(self.stack)):
             self.stacks[self.index][i] = Stack(map(eval_, bin(self.stack[i])[2:].rjust(length, '0')))
 
-    def quickaccumulate(self, cmd):
-        arity, cmd = cmd
-        self.stacks[self.index] = Stack(it.accumulate(self.stack, cmd))
+    # Quick commands #
 
-    def quickall(self, cmd):
-        arity, cmd = cmd
-        if arity == 2:
-            right = self.stack.pop()
-            self.stack.push(all(map(cmd, it.repeat(right), self.stack)))
-        if arity == 1:
-            self.stack.push(all(map(cmd, self.stack)))
-
-    def quickany(self, cmd):
-        arity, cmd = cmd
-        if arity == 2:
-            right = self.stack.pop()
-            self.stack.push(any(map(cmd, it.repeat(right), self.stack)))
-        if arity == 1:
-            self.stack.push(any(map(cmd, self.stack)))
-
-    def quickdropwhile(self, cmd):
-        arity, cmd = cmd
-        if arity == 2:
-            right = self.stack.pop()
-            self.stacks[self.index] = Stack(it.dropwhile(lambda v: cmd(right, v), self.stack))
-        if arity == 1:
-            self.stacks[self.index] = Stack(it.dropwhile(cmd, self.stack))
-
-    def quickeach(self, cmd):
-        arity, cmd = cmd
-        if arity == 2:
-            right = self.stack.pop()
-            self.stacks[self.index] = Stack(map(cmd, it.repeat(right), self.stack))
-        if arity == 1:
-            self.stacks[self.index] = Stack(map(cmd, self.stack))
-
-    def quickfilterfalse(self, cmd):
-        arity, cmd = cmd
-        if arity == 2:
-            right = self.stack.pop()
-            self.stacks[self.index] = Stack(it.filterfalse(lambda v: cmd(right, v), self.stack))
-        if arity == 1:
-            self.stacks[self.index] = Stack(it.filterfalse(cmd, self.stack))
-
-    def quickfiltertrue(self, cmd):
-        arity, cmd = cmd
-        if arity == 2:
-            right = self.stack.pop()
-            self.stacks[self.index] = Stack(filter(lambda v: cmd(right, v), self.stack))
-        if arity == 1:
-            self.stacks[self.index] = Stack(filter(cmd, self.stack))
-
-    def quickgroupby(self, cmd):
-        arity, cmd = cmd
-        if arity == 2:
-            right = self.stack.pop()
-            self.stacks[self.index] = Stack(groupby(lambda a: cmd(right, a), self.stack))
-        if arity == 1:
-            self.stacks[self.index] = Stack(groupby(cmd, self.stack))
-
-    def quickmax(self, cmd):
-        arity, cmd = cmd
-        if arity == 2:
-            right = self.stack.pop()
-            self.stack.push(max(self.stack, key = lambda v: cmd(v, right)))
-        if arity == 1:
-            self.stack.push(max(self.stack, key = cmd))
-
-    def quickmin(self, cmd):
-        arity, cmd = cmd
-        if arity == 2:
-            right = self.stack.pop()
-            self.stack.push(min(self.stack, key = lambda v: cmd(v, right)))
-        if arity == 1:
-            self.stack.push(min(self.stack, key = cmd))
-
-    def quickneighbours(self, cmd):
-        arity, cmd = cmd
-        sublists = [self.stack[i:i+2] for i in range(len(self.stack) - 1)]
-        if arity == 2:
-            self.stacks[self.index] = Stack([cmd(*sub) for sub in sublists])
-        if arity == 1:
-            self.stacks[self.index] = Stack([cmd(sub) for sub in sublists])
-
-    def quickreduce(self, cmd):
-        arity, cmd = cmd
-        self.stack.push(fn.reduce(cmd, self.stack, 1))
-
-    def quickreverse(self, cmd):
-        arity, cmd = cmd
-        args = [self.stack.pop() for _ in range(arity)][::-1]
-        self.stack.push(cmd(*args))
-
-    def quicksort(self, cmd):
-        arity, cmd = cmd
-        if arity == 2:
-            right = self.stack.pop()
-            self.stacks[self.index] = Stack(sorted(self.stack, key = lambda v: cmd(right, v)))
-        if arity == 1:
-            self.stacks[self.index] = Stack(sorted(self.stack, key = cmd))
-
-    def quicksplat(self, cmd):
-        arity, cmd = cmd
-        args = [self.stack.pop() for _ in range(arity)]
-        if args:
-            self.stack.extend(cmd(*args))
+    def quickaccumulate(self, cmd, left, right = None):
+        if isinstance(cmd, list):
+            quick, cmd = cmd
+            quick = self.QUICKS[quick][1]
+            cmd = self.COMMANDS[cmd]
+            ret = list(it.accumulate(left, lambda x, y: quick(cmd, x, y)[0]))
         else:
-            self.stack.extend(self.stack.pop())
+            _, cmd = cmd
+            ret = list(it.accumulate(left, cmd))
+        return ret, 1
 
-    def quickstareach(self, cmd):
-        arity, cmd = cmd
-        self.stacks[self.index] = Stack(it.starmap(cmd, self.stack))
+    def quickall(self, cmd, left, right = None):
+        if isinstance(cmd, list):
+            quick, cmd = cmd
+            if quick in '¬¦':
+                arity = 1
+            quick = self.QUICKS[quick][1]
+            cmd = self.COMMANDS[cmd]
+            
+            try:
+                arity
+            except:
+                arity = cmd[0]
+                
+            if arity == 1:
+                ret = all(map(lambda a: quick(cmd, a), left))
+            else:
+                if right is None:
+                    right = self.stack.pop()
+                ret = all(map(lambda a: quick(cmd, a, right), left))
+        else:
+            arity, cmd = cmd
+            if arity == 1:
+                ret = all(map(cmd, left))
+            else:
+                if right is None:
+                    right = self.stack.pop()
+                ret = all(map(cmd, it.repeat(right), left))
 
-    def quicktakewhile(self, cmd):
-        arity, cmd = cmd
-        if arity == 2:
-            right = self.stack.pop()
-            self.stacks[self.index] = Stack(it.takewhile(lambda v: cmd(right, v), self.stack))
-        if arity == 1:
-            self.stacks[self.index] = Stack(it.takewhile(cmd, self.stack))
+        return ret, 1
+
+    def quickany(self, cmd, left, right = None):
+        if isinstance(cmd, list):
+            quick, cmd = cmd
+            if quick in '¬¦':
+                arity = 1
+            quick = self.QUICKS[quick][1]
+            cmd = self.COMMANDS[cmd]
+            
+            try:
+                arity
+            except:
+                arity = cmd[0]
+                
+            if arity == 1:
+                ret = any(map(lambda a: quick(cmd, a), left))
+            else:
+                if right is None:
+                    right = self.stack.pop()
+                ret = any(map(lambda a: quick(cmd, a, right), left))
+        else:
+            arity, cmd = cmd
+            if arity == 1:
+                ret = any(map(cmd, left))
+            else:
+                if right is None:
+                    right = self.stack.pop()
+                ret = any(map(cmd, it.repeat(right), left))
+
+        return ret, 1
+
+    def quickdropwhile(self, cmd, left, right = None):
+        if isinstance(cmd, list):
+            quick, cmd = cmd
+            if quick in '¬¦':
+                arity = 1
+            quick = self.QUICKS[quick][1]
+            cmd = self.COMMANDS[cmd]
+            
+            try:
+                arity
+            except:
+                arity = cmd[0]
+                
+            if arity == 1:
+                ret = list(it.dropwhile(lambda a: quick(cmd, a), left))
+            else:
+                if right is None:
+                    right = self.stack.pop()
+                left, right = right, left
+                ret = list(it.dropwhile(lambda a: quick(cmd, a, right), left))
+        else:
+            arity, cmd = cmd
+            if arity == 2:
+                if right is None:
+                    right = self.stack.pop()
+                ret = list(it.dropwhile(lambda a: cmd(a, right), left))
+            else:
+                ret = list(it.dropwhile(cmd, left))
+
+        return ret, 1
+
+    def quickeach(self, cmd, left, right = None):
+        if isinstance(cmd, list):
+            quick, cmd = cmd
+            if quick in '¬¦':
+                arity = 1
+            quick = self.QUICKS[quick][1]
+            cmd = self.COMMANDS[cmd]
+            
+            try:
+                arity
+            except:
+                arity = cmd[0]
+                
+            if arity == 1:
+                ret = list(map(lambda a: quick(cmd, a)[0], left))
+            else:
+                if right is None:
+                    right = self.stack.pop()
+                left, right = right, left
+                ret = list(map(lambda a: quick(cmd, a, right)[0], left))
+        else:
+            arity, cmd = cmd
+            if arity == 1:
+                ret = list(map(cmd, left))
+            else:
+                if right is None:
+                    right = self.stack.pop()
+                left, right = right, left
+                ret = list(map(lambda a: cmd(a, right), left))
+
+        return ret, 1
+
+    def quickfilterfalse(self, cmd, left, right = None):
+        if isinstance(cmd, list):
+            quick, cmd = cmd
+            if quick in '¬¦':
+                arity = 1
+            quick = self.QUICKS[quick][1]
+            cmd = self.COMMANDS[cmd]
+            
+            try:
+                arity
+            except:
+                arity = cmd[0]
+                
+            if arity == 1:
+                ret = list(it.filterfalse(lambda a: quick(cmd, a), left))
+            else:
+                if right is None:
+                    right = self.stack.pop()
+                left, right = right, left
+                ret = list(it.filterfalse(lambda a: quick(cmd, a, right), left))
+        else:
+            arity, cmd = cmd
+            if arity == 2:
+                if right is None:
+                    right = self.stack.pop()
+                ret = list(it.filterfalse(lambda a: cmd(a, right), left))
+            else:
+                ret = list(it.filterfalse(cmd, left))
+
+        return ret, 1
+
+    def quickfiltertrue(self, cmd, left, right = None):
+        if isinstance(cmd, list):
+            quick, cmd = cmd
+            if quick in '¬¦':
+                arity = 1
+            quick = self.QUICKS[quick][1]
+            cmd = self.COMMANDS[cmd]
+            
+            try:
+                arity
+            except:
+                arity = cmd[0]
+                
+            if arity == 1:
+                ret = list(filter(lambda a: quick(cmd, a), left))
+            else:
+                if right is None:
+                    right = self.stack.pop()
+                left, right = right, left
+                ret = list(filter(lambda a: quick(cmd, a, right), left))
+        else:
+            arity, cmd = cmd
+            if arity == 2:
+                if right is None:
+                    right = self.stack.pop()
+                ret = list(filter(lambda a: cmd(a, right), left))
+            else:
+                ret = list(filter(cmd, left))
+
+        return ret, 1
+
+    def quickgroupby(self, cmd, left, right = None):
+        if isinstance(cmd, list):
+            quick, cmd = cmd
+            if quick in '¬¦':
+                arity = 1
+            quick = self.QUICKS[quick][1]
+            cmd = self.COMMANDS[cmd]
+            
+            try:
+                arity
+            except:
+                arity = cmd[0]
+                
+            if arity == 1:
+                ret = list(groupby(lambda a: quick(cmd, a), left))
+            else:
+                if right is None:
+                    right = self.stack.pop()
+                left, right = right, left
+                ret = list(groupby(lambda a: quick(cmd, a, right), left))
+        else:
+            arity, cmd = cmd
+            if arity == 2:
+                if right is None:
+                    right = self.stack.pop()
+                ret = list(groupby(lambda a: cmd(a, right), left))
+            else:
+                ret = list(groupby(cmd, left))
+
+        return ret, 1
+
+    def quickmax(self, cmd, left, right = None):
+        if isinstance(cmd, list):
+            quick, cmd = cmd
+            if quick in '¬¦':
+                arity = 1
+            quick = self.QUICKS[quick][1]
+            cmd = self.COMMANDS[cmd]
+            
+            try:
+                arity
+            except:
+                arity = cmd[0]
+                
+            if arity == 1:
+                ret = max(left, key = lambda a: quick(cmd, a))
+            else:
+                if right is None:
+                    right = self.stack.pop()
+                left, right = right, left
+                ret = max(left, key = lambda a: quick(cmd, a, right))
+        else:
+            arity, cmd = cmd
+            if arity == 1:
+                ret = max(left, key = cmd)
+            else:
+                if right is None:
+                    right = self.stack.pop()
+                left, right = right, left
+                ret = max(left, key = lambda a: cmd(a, right))
+
+        return ret, 1
+
+    def quickmin(self, cmd, left, right = None):
+        if isinstance(cmd, list):
+            quick, cmd = cmd
+            if quick in '¬¦':
+                arity = 1
+            quick = self.QUICKS[quick][1]
+            cmd = self.COMMANDS[cmd]
+            
+            try:
+                arity
+            except:
+                arity = cmd[0]
+                
+            if arity == 1:
+                ret = min(left, key = lambda a: quick(cmd, a))
+            else:
+                if right is None:
+                    right = self.stack.pop()
+                left, right = right, left
+                ret = min(left, key = lambda a: quick(cmd, a, right))
+        else:
+            arity, cmd = cmd
+            if arity == 1:
+                ret = min(left, key = cmd)
+            else:
+                if right is None:
+                    right = self.stack.pop()
+                left, right = right, left
+                ret = min(left, key = lambda a: cmd(a, right))
+
+        return ret, 1
+
+    def quickneighbours(self, cmd, left, right = None):
+        if isinstance(cmd, list):
+            quick, cmd = cmd
+            if quick in '¬¦':
+                arity = 1
+            quick = self.QUICKS[quick][1]
+            cmd = self.COMMANDS[cmd]
+            
+            try:
+                arity
+            except:
+                arity = cmd[0]
+                
+            pairs = [left[i: i+2] for i in range(len(left) - 1)]
+            if arity == 2:
+                ret = [quick(cmd, *sub) for sub in pairs]
+            else:
+                ret = [quick(cmd, sub) for sub in pairs]
+        else:
+            arity, cmd = cmd
+            pairs = [left[i: i+2] for i in range(len(left) - 1)]
+            if arity == 2:
+                ret = [cmd(*sub) for sub in pairs]
+            else:
+                ret = [cmd(sub) for sub in pairs]
+
+        return ret, 1
+
+    def quickreduce(self, cmd, left, right = None):
+        if isinstance(cmd, list):
+            quick, cmd = cmd
+            quick = self.QUICKS[quick][1]
+            cmd = self.COMMANDS[cmd]
+            ret = fn.reduce(lambda x, y: quick(cmd, x, y)[0], left)
+        else:
+            _, cmd = cmd
+            ret = fn.reduce(cmd, left)
+        return ret, 1
+            
+    def quickreverse(self, cmd, left, right = None):
+        if isinstance(cmd, list):
+            quick, cmd = cmd
+            if quick in '¬¦':
+                arity = 1
+            quick = self.QUICKS[quick][1]
+            cmd = self.COMMANDS[cmd]
+            
+            try:
+                arity
+            except:
+                arity = cmd[0]
+                
+            if arity == 1:
+                ret = quick(cmd, left)[0]
+            else:
+                if right is None:
+                    right = self.stack.pop()
+                ret = quick(cmd, right, left)[0]
+        else:
+            arity, cmd = cmd
+            if arity == 1:
+                ret = cmd(left)
+            else:
+                if right is None:
+                    right = self.stack.pop()
+                ret = cmd(right, left)
+                
+        return ret, 1
+
+    def quicksort(self, cmd, left, right = None):
+        if isinstance(cmd, list):
+            quick, cmd = cmd
+            if quick in '¬¦':
+                arity = 1
+            quick = self.QUICKS[quick][1]
+            cmd = self.COMMANDS[cmd]
+            
+            try:
+                arity
+            except:
+                arity = cmd[0]
+                
+            if arity == 1:
+                ret = sorted(left, key = lambda a: quick(cmd, a))
+            else:
+                if right is None:
+                    right = self.stack.pop()
+                left, right = right, left
+                ret = sorted(left, key = lambda a: quick(cmd, a, right))
+        else:
+            arity, cmd = cmd
+            if arity == 1:
+                ret = sorted(left, key = cmd)
+            else:
+                if right is None:
+                    right = self.stack.pop()
+                left, right = right, left
+                ret = sorted(left, key = lambda a: cmd(a, right))
+
+        return ret, 1
+
+    def quicksplat(self, cmd, left, right = None):
+        if isinstance(cmd, list):
+            quick, cmd = cmd
+            if quick in '¬¦':
+                arity = 1
+            quick = self.QUICKS[quick][1]
+            cmd = self.COMMANDS[cmd]
+            ret = quick(cmd, left, right)[0]
+        else:
+            arity, cmd = cmd
+
+            if arity == 2:
+                if right is None:
+                    right = self.stack.pop()
+                left, right = right, left
+                ret = list(map(lambda a: cmd(a, right), left))
+            elif arity == 1:
+                ret = cmd(left)
+            else:
+                ret = left
+                
+        return ret, 2
+
+    def quickstareach(self, cmd, left, right = None):
+        if isinstance(cmd, list):
+            quick, cmd = cmd
+            if quick in '¬¦':
+                arity = 1
+            quick = self.QUICKS[quick][1]
+            cmd = self.COMMANDS[cmd]
+            ret = list(it.starmap(lambda a: quick(cmd, a)[0], left))
+        else:
+            _, cmd = cmd
+            ret = list(it.starmap(cmd, left))
+
+        return ret, 1
+
+    def quicktakewhile(self, cmd, left, right = None):
+        if isinstance(cmd, list):
+            quick, cmd = cmd
+            if quick in '¬¦':
+                arity = 1
+            quick = self.QUICKS[quick][1]
+            cmd = self.COMMANDS[cmd]
+            
+            try:
+                arity
+            except:
+                arity = cmd[0]
+                
+            if arity == 1:
+                ret = list(it.takewhile(lambda a: quick(cmd, a), left))
+            else:
+                if right is None:
+                    right = self.stack.pop()
+                left, right = right, left
+                ret = list(it.takewhile(lambda a: quick(cmd, a, right), left))
+        else:
+            arity, cmd = cmd
+            if arity == 2:
+                if right is None:
+                    right = self.stack.pop()
+                ret = list(it.takewhile(lambda a: cmd(a, right), left))
+            else:
+                ret = list(it.takewhile(cmd, left))
+
+        return ret, 1
 
     def quickternary(self, cmd):
         cond, ifclause, elseclause = split(''.join(cmd), ',')
@@ -1108,7 +1505,9 @@ class StackScript:
             ret = self(ifclause).stacks.pop().pop()
         else:
             ret = self(elseclause).stacks.pop().pop()
-        self.stack.push(ret)
+        return ret, 1
+
+    # End quick commands #
 
     def remove(self, even_odd):
         self.stacks[self.index] = Stack(filter(lambda x: x%2 == int(bool(even_odd)), self.stack))
@@ -1184,6 +1583,9 @@ class Function:
             args = list(args)[:self.args]
             while len(args) != self.args:
                 args.append(-1)
+
+        if self.flags[6]:
+            args = args[::-1]
                 
         if self.flags[4]:
             self.stack.push(list(args))
@@ -1222,7 +1624,7 @@ class Script:
         self.NILADS = r'!~&#@NPOHSQVG'
         self.MONADS = r'+-*/\^><%=R'
         self.CONSTRUCTS = 'FWEIDL'
-        self.FLAGS = r'*^?:!~'
+        self.FLAGS = r'*^?:!~#'
 
         self.code = process(code.split('\n'))
 
