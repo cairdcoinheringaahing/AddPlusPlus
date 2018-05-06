@@ -535,6 +535,7 @@ class StackScript:
                     if arity < 0:
                         arity = 0
                     result = command(*[self.stack.pop() for _ in range(arity)])
+                    print(cmd, result)
                     
                 except TypeError:
                     raise error.IncongruentTypesError(line, outer[line-1], cmd)
@@ -785,7 +786,7 @@ class StackScript:
                 'a': ( 0, lambda: list(self.args)                       ),
                 'b': (-1, lambda: Null                                  ),
                 'c': ( 0, lambda: self.stack.clear()                    ),
-                'd': ( 0, lambda: self.stack[-1]                        ),
+                'd': ( 0, lambda: self.stack.push(self.stack[-1])       ),
                 'e': ( 2, lambda x, y: x in y                           ),
                 'f': ( 0, lambda: list(filter(isprime, self.factors())) ),
                 'g': (-1, lambda: Null                                  ),
