@@ -1533,7 +1533,7 @@ class StackScript:
 
         return ret, 1
 
-    def quickternary(self, cmd):
+    def quickternary(self, cmd, *_):
         cond, ifclause, elseclause = split(''.join(cmd), ',')
         if self(cond).stacks.pop().pop():
             ret = self(ifclause).stacks.pop().pop()
