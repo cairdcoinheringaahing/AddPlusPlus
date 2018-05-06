@@ -559,7 +559,7 @@ class StackScript:
         if cmd[0] == '{' and cmd[-1] == '}':
             cmd = ''.join(cmd)
             func = self.functions[cmd[1:-1]]
-            self.QUICKS[quick][1]((func.args, func))
+            ret = self.QUICKS[quick][1]((func.args, func), self.stack.pop())
             
         elif type(cmd) == list:
             ret = self.QUICKS[quick][1](cmd, self.stack.pop())
@@ -727,6 +727,7 @@ class StackScript:
                 'Ω': ( 1, self.quickreverse                             ),
                 '¿': ( 0, self.quickternary                             ),
                 'ß': ( 1, self.quicksplat                               ),
+                'Δ': ( 1, self.quickgroupadjacent                       ),
                }
     
     @property
@@ -1232,6 +1233,39 @@ class StackScript:
                 ret = list(filter(lambda a: cmd(a, right), left))
             else:
                 ret = list(filter(cmd, left))
+
+        return ret, 1
+
+    def quickgroupadjacent(self, cmd, left, right = None):
+        if isinstance(cmd, list):
+            quick, cmd = cmd
+            if quick in '¬¦':
+                arity = 1
+            quick = self.QUICKS[quick][1]
+            cmd = self.COMMANDS[cmd]
+            
+            try:
+                arity
+            except:
+                arity = cmd[0]
+                
+            if arity == 1:
+                ret = it.groupby(left, lambda a: quick(cmd, a))
+            else:
+                if right is None:
+                    right = self.stack.pop()
+                left, right = right, left
+                ret = it.groupby(left, lambda a: quick(cmd, a, right))
+        else:
+            arity, cmd = cmd
+            if arity == 2:
+                if right is None:
+                    right = self.stack.pop()
+                ret = it.groupby(left, lambda a: cmd(a, right))
+            else:
+                ret = it.groupby(left, cmd)
+
+        ret = list(map(lambda a: list(a[1]), ret))
 
         return ret, 1
 
