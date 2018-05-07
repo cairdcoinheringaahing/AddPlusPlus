@@ -535,7 +535,6 @@ class StackScript:
                     if arity < 0:
                         arity = 0
                     result = command(*[self.stack.pop() for _ in range(arity)])
-                    print(cmd, result)
                     
                 except TypeError:
                     raise error.IncongruentTypesError(line, outer[line-1], cmd)
