@@ -870,7 +870,7 @@ class StackScript:
                 'Be':( 1, lambda x: [int(i in self.stack[-1])for i in x]),
                 'Bf':( 1, lambda x: ~x                                  ),
                 'Bg':(-1, lambda: Null                                  ),
-                'Bh':(-1, lambda: Null                                  ),
+                'Bh':( 1, lambda x: print(x)                            ),
                 'Bi':( 0, lambda: self.a(int)                           ),
                 'Bj':( 0, lambda: self.a(isprime)                       ),
                 'Bk':( 1, lambda x: self.assign(x)                      ),
