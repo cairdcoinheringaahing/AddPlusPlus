@@ -569,6 +569,7 @@ class StackScript:
             cmd = ''.join(cmd).strip()
             if cmd not in self.COMMANDS or self.COMMANDS[cmd][0] == -1:
                 self.runquick(quick, '{' + cmd + '}')
+		return
                 
             else:
                 ret = self.QUICKS[quick][1](self.COMMANDS[cmd], self.stack.pop())
