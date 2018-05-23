@@ -1,4 +1,5 @@
 import argparse
+import collections
 import contextlib
 import functools as fn
 import itertools as it
@@ -12,9 +13,117 @@ import sys
 import error
 
 GLOBALREGISTER = None
-VERSION = 5.3
+VERSION = 5.4
 
 identity = lambda a: a
+
+INFIX = '+*/\^><%=|RD-'
+PREFIX = '!#NROoHhd_'
+FLAGS = '*^?:!~#'
+
+number = re.compile(r'''
+
+    ^
+    ((-?[1-9]\d*|0)\.\d+
+    |
+    (-?[1-9]\d*|0)
+    |
+    (
+        (
+            (-?[1-9]\d*|0)
+            (\.\d+)?
+            [+-]
+        )?
+	(-?[1-9]\d*|0)
+	(\.\d+)?j
+    ))$
+
+''', re.VERBOSE)
+
+varassign = re.compile(r'''
+
+    ^           # Match the start of the line
+    ([A-Za-z]+) # Then a series of letters (var)
+    :           # Followed by a colon
+    (.*)$       # Then the rest of the line (val)
+
+''', re.VERBOSE)
+
+varswap = re.compile(r'''
+                     
+    ^           # Match the start of the line
+    ([A-Za-z]+) # Then a series of letters (var1)
+    &           # Then an ampersand
+    ([A-Za-z]+) # Then another series of letters (var2_
+    $           # Then the end of the line
+
+''', re.VERBOSE)
+
+varactive = re.compile(r'''
+
+    ^           # Match the start of the line
+    `           # Then a backtick
+    ([A-Za-z]+) # Then a series of letters (var)
+    $           # Then the end of the line
+
+''', re.VERBOSE)
+
+comment = re.compile(r'''
+
+    ^           # Match the start of the line
+    \s+         # Followed by whitespace
+    (.*?)       # Then anything that isn't a semicolon
+    (;          # Followed by a semicolon (comment)
+    .*)?$       # Then anything until the end of the line
+
+''', re.VERBOSE)
+
+infix = re.compile(r'''
+
+    ^
+    ([A-Za-z]+|.*?)?
+    ([{}])
+    (.*)$
+
+'''.format(INFIX), re.VERBOSE)
+
+prefix = re.compile(r'''
+
+    ^
+    ([{}])
+    ([A-Za-z]+|.*?)$
+
+'''.format(PREFIX), re.VERBOSE)
+
+construct = re.compile(r'''
+
+    ^(                      # Match the start of the line
+        ((W|I)              # Either a W or an I (while/if statements)
+         ([A-Za-z]+         # ...followed by a series of letters (var1)
+          [{}]              # ...then an infix command
+          [A-Za-z]+)        # ...then the second series of letters (var2)
+         |                  # OR
+         ([{}]              # ...followed by a prefix command
+          ([A-Za-z]+|.*?))) # ...then a series of letters (var)
+        |(F([A-Za-z]+|.*?)) # OR, match an F, followed by a var
+        |(E([A-Za-z]+|.*?)) # OR, match an E, followed by a var
+    ),                      # End that with a comma
+    (.*)$                   # Then the rest of the line
+
+'''.format(INFIX, PREFIX), re.VERBOSE)
+
+function = re.compile(r'''
+
+    ^
+    (?:D,([A-Za-z]+),([@{}]*),(.*)$)
+    |
+    (?:L([{}]*),(.*)$)
+    |
+    (?:\$(lambda\ \d+)>?(.*)$)
+    |
+    (?:\$([A-Za-z]+)>?(.*)$)
+
+'''.format(FLAGS, FLAGS), re.VERBOSE)
 
 class addpp(object):
     def __setattr__(self, name, value):
@@ -31,15 +140,6 @@ def suppress_output():
             yield
         finally:
             sys.stdout = old_stdout
-
-def process(lines):
-    final = ['']
-    for line in lines:
-        if line.startswith(('  ', '\t')):
-            final[-1] += line.split(';')[0].strip()
-        else:
-            final.append(line.split(';')[0].strip())
-    return list(filter(None, map(lambda a: a.strip(','), final)))
 
 def isdigit(string):
     return all(i in '1234567890-.' for i in string)
@@ -65,13 +165,94 @@ def eval_(string):
     except:
         return string
 
+def nest(f, g):
+    return lambda x: f(g(x))
+
+def not_none(value):
+    return value is not None
+
+def splitting(string, splitter):
+    cmds = ['']
+    ignore = 0
+    skips = 0
+    for index, char in enumerate(string):
+        if skips:
+            skips -= 1
+            continue
+        
+        if char == '"':
+            if ignore == 1:
+                ignore = 0
+            elif ignore == 0:
+                ignore = 1
+                
+        if char == "'":
+            if ignore == 2:
+                ignore = 0
+            elif ignore == 0:
+                ignore = 1
+
+        if char == splitter and not ignore:
+            if string[index+1] == splitter:
+                cmds[-1] += char
+                skips = 1
+            else:
+                cmds.append('')
+        else:
+            cmds[-1] += char
+
+    return cmds
+
+def whileloop(inputs, var, v, cond, *run):
+    run = '\n'.join(run)
+    while Script(cond, inputs, loop = True, vars_ = [var, v]).variables['#']:
+        state = Script(run, inputs, vars_ = [var, v])
+        var = state.variables
+        v = state.var
+    return var.copy()
+
+def forloop(inputs, var, v, itervar, *run):
+    run = '\n'.join(run)
+    itervar = var[itervar]
+    for i in range(itervar):
+        var['i'] = i
+        state = Script(run, inputs, vars_ = [var, v])
+        var = state.variables
+        v = state.var
+        
+    var.pop('i', None)
+    return var.copy()
+
+def each(inputs, var, v, itervar, *run):
+    run = '\n'.join(run)
+    itervar = var[itervar]
+    if isinstance(itervar, (int, float)):
+        itervar = range(int(itervar))
+
+    for i in itervar:
+        var['i'] = i
+        state = Script(run, inputs, vars_ = [var, v])
+        var = state.variables
+        v = state.var
+
+    var.pop('i', None)
+    return var.copy()
+
+def ifstatement(inputs, var, v, cond, *run):
+    run = '\n'.join(run)
+    if Script(cond, inputs, loop = True, vars_ = [var, v]).variables['#']:
+        state = Script(run, inputs, vars_ = [var, v])
+        var = state.variables
+        v = state.var
+    return var.copy()
+
 def convert_version(version):
     # In  : 3
     # Out : vers/v3.py
     # In  : 4.3
-    # Out : vers/v4/v4.3.py
+    # Out : vers/v4/v4v3.py
     # In  : 2.5.1
-    # Out : vers/v2/v2.5/v2.5.1.py
+    # Out : vers/v2/v2v5/v2v5v1.py
 
     if version.endswith('.0') and version.count('.') == 1:
         version = str(int(eval(version)))
@@ -435,11 +616,11 @@ class StackScript:
 
     def __call__(self, code):
         args = [self.name, code, self.args, self.functions,
-                Stack(self.args), self.line, self.outer, self.tokens]
+                Stack(self.args), self.line, self.outer, self.tokens, self.vars]
         return StackScript(*args)
 
     def __init__(self, name, code, args, funcs, stack,
-                 line, outer, tokens, recur = False):
+                 line, outer, tokens, vars_, recur = False):
         
         self.args = args
         self.register = args if args else 0
@@ -455,6 +636,7 @@ class StackScript:
         self.line = line
         self.outer = outer
         self.tokens = tokens
+        self.vars = vars_
         
         self.code = self.tokenize(code + ' ', tokens)
         
@@ -518,6 +700,11 @@ class StackScript:
                     
                 if cmd:
                     self.stack.push(eval_(cmd))
+
+            elif cmd[0] == '`':
+                var = cmd.strip('`')
+                self.stack.push(self.vars[var])
+                
             else:
                 
                 cmd = cmd.strip()
@@ -586,11 +773,16 @@ class StackScript:
     def tokenize(self, text, output):
         
         final = []
+        
         stemp = ''
         ctemp = ''
+        vtemp = ''
         num = ''
+        
         instr = False
         incall = False
+        invar = False
+        
         text = text.replace('{', ' {').replace('}', '} ')
         
         for i, char in enumerate(text):
@@ -604,9 +796,11 @@ class StackScript:
             if char == '"': instr = not instr
             if char == '{': incall = True
             if char == '}': incall = False; ctemp += '}'; continue
+            if char == '`': invar = not invar;
 	    
-            if instr: stemp += char
-            elif incall:ctemp += char
+            if instr:    stemp += char
+            elif incall: ctemp += char
+            elif invar:  vtemp += char
             else:
                 if stemp:
                     final.append(stemp)
@@ -614,6 +808,10 @@ class StackScript:
                 if ctemp:
                     final.append(ctemp)
                     ctemp = ''
+                if vtemp:
+                    final.append(vtemp)
+                    vtemp = ''
+                    
                 if isdigit(char):
                     try:
                         if char == '-':
@@ -622,6 +820,7 @@ class StackScript:
                         else:
                             num += char
                     except: final.append(char)
+                    
                 else:
                     if num:
                         final.append(num)
@@ -630,13 +829,14 @@ class StackScript:
 
         if stemp: final.append(stemp)
         if ctemp: final.append(ctemp)
+        if vtemp: final.append(vtemp)
         if num: final.append(num)
         
         tokens = []
         for i, f in enumerate(final):
             if f in 'Bb':
                 tokens.append(f + final.pop(i + 1))
-            elif f in '" ':
+            elif f in '" `':
                 pass
             else:
                 tokens.append(f)
@@ -811,7 +1011,7 @@ class StackScript:
                 'z': ( 2, lambda x, y: list(map(list, zip(x, y)))       ),
                 
                 '|': ( 1, lambda x: abs(x)                              ),
-                '~': (-1, lambda: Null                                  ),
+                '~': ( 2, lambda f, x: f(*x) if hasattr(x, '__iter__') else f(x)                    ),
 
                 'B!':( 0, lambda: self.a(lambda a: int(not a))          ),
                 'B#':( 0, lambda: self.a(sorted)                        ),
@@ -1601,7 +1801,10 @@ class StackScript:
 
 class Function:
 
-    def __init__(self, name, args, code, line, g_code, outerf, tkns, *flags):
+    def __init__(self, name, args, code, flags,
+                 line = 0, g_code = "", outerf = {},
+                 tkns = False, vars_ = {}):
+        
         self.name = name
         self.args = args if args != -1 else 0
         self.lamb = args == -1
@@ -1612,6 +1815,7 @@ class Function:
         self.gen = g_code
         self.outerf = outerf
         self.tkns = tkns
+        self.vars = vars_
 
     def __call__(self, *args, funccall = False, recur = False):
         if not self.flags[2]:
@@ -1630,14 +1834,15 @@ class Function:
         if self.flags[5]:
             arr = []
             for element in self.stack:
-                if hasattr(arr, '__iter__'):
+                if hasattr(element, '__iter__'):
                     for i in element: arr.append(i)
                 else:
                     arr.append(element)
             self.stack = Stack(arr.copy())
             
         script = StackScript(self.name, self.code, args, self.outerf,
-                             self.stack, self.line, self.gen, self.tkns, recur)
+                             self.stack, self.line, self.gen, self.tkns,
+                             self.vars, recur)
         value = script.run(*self.flags[:2])
         self.stack = Stack()
         
@@ -1650,334 +1855,329 @@ class Function:
         return int(value) if type(value) == bool else value
         
     def __repr__(self):
-        return '<Function ${}: {}>'.format(self.name, self.code)
+        return "<Function ${}: '{}'>".format(self.name, self.code)
 
 class Script:
 
-    def __init__(self,code, inputs, impfunc, tokens):
+    def __init__(self, code, inputs, implicit = [False, False],
+                 tokens = False, loop = False, vars_ = None):
 
-        self.NILADS = r'!~&#@NPOHSQVG'
-        self.MONADS = r'+-*/\^><%=R'
-        self.CONSTRUCTS = 'FWEIDL'
-        self.FLAGS = r'*^?:!~#'
+        code = code.split('\n')
 
-        self.code = process(code.split('\n'))
-
+        self.code = ['']
+        self.preserve = inputs
+        self.input = iter(inputs)
+        self.implicit, self.specify = implicit
+        self.display_tokens = tokens
         self.called = False
-        self.implicit = False
-        self.stored = []
-        self.string = ''
-        self.functions = {}
-        self.y = 0
-        self.x = 0
-        self.line = 0
-        self.I = 0
-        self.inputs = inputs
-            
-        for cmd in self.code:
-            self.line += 1
-            if type(self.x) == list:
-                self.x = Stack(self.x)
-            if type(self.y) == list:
-                self.y = Stack(self.y)
-                
-            if cmd[0] in self.CONSTRUCTS:
-                
-                if cmd[:2] == 'EX':
-                    loop = cmd.split(',')[1:]
-                    for element in self.stored:
-                        for chunk in loop:
-                            self.run_chunk(chunk, x=element)
-                            
-                elif cmd[:2] == 'EY':
-                    loop = cmd.split(',')[1:]
-                    for element in self.stored:
-                        for chunk in loop:
-                            self.run_chunk(chunk, y=element)
-                            
-                elif cmd[:2] == 'W=':
-                    loop = cmd.split(',')[1:]
-                    while self.x == self.y:
-                        for chunk in loop:
-                            self.run_chunk(chunk)
-                            
-                elif cmd[:2] == 'W!':
-                    loop = cmd.split(',')[1:]
-                    while self.x != self.y:
-                        for chunk in loop:
-                            self.run_chunk(chunk)
-                            
-                elif cmd[0] == 'F':
-                    loop = cmd.split(',')[1:]
-                    for _ in range(self.x):
-                        for chunk in loop:
-                            self.run_chunk(chunk)
-                            
-                elif cmd[0] == 'I':
-                    loop = cmd.split(',')[1:]
-                    if self.x:
-                        for chunk in loop:
-                            self.run_chunk(chunk)
-                            
-                elif cmd[0] == 'W':
-                    loop = cmd.split(',')[1:]
-                    while self.x:
-                        for chunk in loop:
-                            self.run_chunk(chunk)
-                            
-                elif cmd[0] == 'D':
-                    cmd = cmd.split(',')
-                    func_name = cmd[1]
-                    func_args = cmd[2].count('@')
-                    func_flags = []
-                    for flag in self.FLAGS:
-                        func_flags.append(flag in cmd[2])
-                    func_code = ','.join(cmd[3:])
-                    self.functions[func_name] = Function(func_name, func_args, func_code, self.line, code, self.functions, tokens, *func_flags)
+        
+        self.lambdas = 0
+        self.functions = collections.OrderedDict()
 
-                elif cmd[0] == 'L':
-                    cmd = cmd.split(',')
-                    flags = cmd[0][1:]
-                    lambda_c = ','.join(cmd[1:])
-                    lambda_n = len(list(filter(lambda a: bool(re.search(r'^lambda \d+$', a)), self.functions.keys()))) + 1
-                    name = 'lambda {}'.format(lambda_n)
-                    lambda_f = []
-                    for flag in self.FLAGS:
-                        lambda_f.append(flag == '?' or flag in flags)
-                    self.functions[name] = Function(name, -1, lambda_c, self.line, code, self.functions, tokens, *lambda_f)
-                    
+        if vars_ is None:
+            self.variables = {'x': 0, 'y': 0}
+            self.var = 'x'
+        else:
+            self.variables = vars_[0].copy()
+            self.var = vars_[1]
+
+        if loop:
+            self.variables['#'] = 0
+            self.var = '#'
+
+        for index, line in enumerate(code):
+            if comment.search(line):
+                line = line.split(';')[0]
+                self.code[-1] += line.strip()
+                
             else:
-                self.implicit = True
-                if cmd[:2] in ['x:', 'y:']:
-                    if cmd[0] == 'x': acc = self.x; acc_n = 'x'
-                    else: acc = self.y; acc_n = 'y'
-                        
-                    c = cmd[2:]
-                    if c == '?':
-                        try: acc = self.inputs[self.I]; self.I += 1
-                        except: acc = 0
-                    elif c == 'G':
-                        try: acc = self.stored.pop()
-                        except: raise error.EmptySecondStackError(self.line, self.code[self.line-1])
-                    elif c == 'x': acc = self.x
-                    elif c == 'y': acc = self.y
-                    elif c == 'g': acc = self.stored[-1]
-                    else: acc = eval_(c)
-					
-                    if acc_n == 'x': self.x = acc
-                    if acc_n == 'y': self.y = acc
-                        
-                elif cmd[0] == '$':
-                    self.called = True
-                    cmd = cmd.split('>')
-                    try: func = self.functions[cmd[0][1:]]
-                    except: raise error.UnableToRetrieveFunctionError(self.line, self.code[self.line-1], cmd[0][1:])
-                    args = []
-                    for c in cmd[1:]:
-                        if c == '?':
-                            try: args.append(self.inputs[self.I]); self.I += 1
-                            except: args.append(0)
-                        elif c == 'G':
-                            try: args.append(self.stored.pop())
-                            except: raise error.EmptySecondStackError(self.line, self.code[self.line-1])
-                        elif c == 'x': args.append(self.x)
-                        elif c == 'y': args.append(self.y)
-                        elif c == 'g': args.append(self.stored[-1])
-                        elif c == '_': args += self.stored
-                        else: args.append(eval_(c))
-                            
-                    value = func(*args)
-                    if type(value) == Null: value = value.value
-                    if type(value) == str: self.stored.append(value)
-                    if type(value) == list:
-                        for v in value:
-                            self.stored.append(v)
-                    self.x = value
-                    
-                else:
-                    self.run_chunk(cmd)
-                    
-        if impfunc[0] and not self.called and self.functions:
+                line = line.split(';')[0]
+                self.code.append(line.strip())
+
+        self.code = list(filter(None, self.code))
+
+        for index, line in enumerate(self.code):
+            self.index = index
+            self.fn_shell = fn.partial(Function,
+                                           line     = self.index,
+                                           g_code   = '\n'.join(self.code),
+                                           outerf   = self.functions,
+                                           tkns     = self.display_tokens,
+                                           vars_    = self.variables
+                                       )
             
-            if impfunc[1]:
-                func = self.functions[impfunc[1]]
+            category = self.categorise(line)
+            ret = category(line)
+
+            if hasattr(ret, 'with_traceback'):
+                raise ret(index, line)
+
+            if self.display_tokens:
+                print('    {:25} {:20} {:45} {}'.format(line, str(self.variables), str(ret), self.var))
+
+        if self.implicit and not self.called and self.functions:
+
+            if self.specify:
+                func = self.functions[self.specify]
             else:
                 func = self.functions[list(self.functions.keys())[0]]
+
+            self.input = list(self.input)
+            if self.input:
+                ret = func(*self.input)
                 
-            if self.I < len(self.inputs):
-                result = func(*self.inputs[self.I:])
-            elif self.x:
-                if self.y:
-                    result = func(self.x, self.y)
-                else:
-                    result = func(self.x)
+            elif len(self.variables.keys()) > 2:
+                vals = filter(None, self.variables.values())
+                ret = func(*vals)
+
             else:
-                result = func()
-                
-            if type(result) != Null and not self.implicit:
-                print(result)
-                
-    def run_chunk(self, cmd, x=None, y=None):
-        if x is not None: self.x = x
-        if y is not None: self.y = y
+                args = []
+                if self.variables['x']:
+                    args.append(self.variables['x'])
+                if self.variables['y']:
+                    args.append(self.variables['y'])
 
-        symbol = cmd[0]
-        if symbol == "_":
-            for i in self.inputs:
-                self.stored.append(i)
-        if symbol == '}': self.x, self.y = self.y, self.x
-            
-        if len(cmd) > 1: value = eval_(cmd[1:])
-        else: value = None
+                ret = func(*args)
 
-        if cmd[:2] in ['x:', 'y:']:
-            if cmd[0] == 'x': acc = self.x; acc_n = 'x'
-            else: acc = self.y; acc_n = 'y'
+            if type(ret) != Null:
+                print(ret)
                 
-            c = cmd[2:]
-            if c == '?':
-                try: acc = self.inputs[self.I]; self.I += 1
-                except: acc = 0
-            elif c == 'G':
-                try: acc = self.stored.pop()
-                except: raise error.EmptySecondStackError(self.line, self.code[self.line-1])
-            elif c == 'x': acc = self.x
-            elif c == 'y': acc = self.y
-            elif c == 'g': acc = self.stored[-1]
-            else: acc = eval_(c)
-                                
-            if acc_n == 'x': self.x = acc
-            if acc_n == 'y': self.y = acc
-        elif symbol == '$':
-            self.called = True
-            cmd = cmd.split('>')
-            try: func = self.functions[cmd[0][1:]]
-            except: raise error.UnableToRetrieveFunctionError(self.line, self.code[self.line-1], cmd[0][1:])
-            args = []
-            for c in cmd[1:]:
-                if c == '?':
-                    try: args.append(self.inputs[self.I]); self.I += 1
-                    except: args.append(0)
-                elif c == 'G':
-                    try: args.append(self.stored.pop())
-                    except: raise error.EmptySecondStackError(self.line, self.code[self.line-1])
-                elif c == 'x': args.append(self.x)
-                elif c == 'y': args.append(self.y)
-                elif c == 'g': args.append(self.stored[-1])
-                elif c == '_': args += self.stored
-                else: args.append(eval_(c))
-                    
-            value = func(*args)
-            if type(value) == Null: value = value.value
-            if type(value) == str: self.stored.append(value)
-            if type(value) == list:
-                for v in value:
-                    self.stored.append(v)
-            self.x = value
-        elif value is not None:
-            if value == '?':
-                try: value = self.inputs[self.I];  self.I += 1
-                except: raise error.NoMoreInputError(self.line, self.code[self.line-1])
-            if value == 'G':
-                try: value = self.stored.pop()
-                except: raise error.EmptySecondStackError(line, self.code[line-1])
-            if value == 'g': value = self.stored[-1]
-            if value == 'x': value = self.x
-            if value == 'y': value = self.y
-                
-            try: self.x = self.COMMANDS[symbol](value)
-            except ZeroDivisionError: raise error.DivisionByZeroError(self.line, self.code[self.line-1])
-            except: raise error.InvalidSymbolError(self.line, self.code[self.line-1], symbol)
-                
+    def categorise(self, string):
+        if function.search(string):
+            return self.function
+        
+        if varassign.search(string):
+            return self.assign
+        
+        if varswap.search(string):
+            return self.swap
+        
+        if varactive.search(string):
+            return self.activate
+
+        if construct.search(string):
+            return self.construct
+
+        if infix.search(string):
+            return self.infix
+
+        if prefix.search(string):
+            return self.prefix
+
+        return lambda _: error.InvalidSyntaxError
+
+    def assign(self, string):
+        var, val = varassign.search(string).groups()
+        val = self.eval(val)
+        
+        if hasattr(val, 'with_traceback'):
+            return val
+
+        self.variables[var] = val
+
+    def swap(self, string):
+        left, right = varswap.search(string).groups()
+        v = self.variables.copy()
+        v[left], v[right] = v[right], v[left]
+        self.variables = v.copy()
+
+    def activate(self, string):
+        var = varactive.search(string).groups()[0]
+        self.var = var
+
+    def construct(self, string):
+        head, *captures = construct.search(string).groups()
+        loop, *head = head
+
+        cond = ''.join(head)
+        body = captures.pop().strip(',')
+        loop = self.cons[loop]
+
+        cmds = splitting(body, ',')
+
+        self.variables = loop(self.input, self.variables.copy(), self.var, cond, *cmds)
+
+    def infix(self, string):
+        left, oper, right = infix.search(string).groups()
+
+        if left == '':
+            left = self.var
+        if right == '':
+            right = self.var
+     
+        if oper in self.commands.keys():
+            oper = self.commands[oper]
         else:
-            try: v = self.COMMANDS[symbol]()
-            except:
-                if symbol == '?':
-                    try: v = self.inputs[self.I]; self.I += 1
-                    except: raise error.NoMoreInputError(self.line, self.code[self.line-1])
-                else: v = None
-            if v is None: return
-            self.x = v
+            return fn.partial(error.InvalidSymbolError, char = oper)
 
-    def __call__(self, *values):
-        return None
+        if left.isalpha() and '_' != self.var:
+            setter = left
+        else:
+            setter = self.var
+
+        left, right = self.eval(left), self.eval(right)
+        ret = oper(left, right)
+        if ret is not None:
+            self.variables[setter] = ret
+
+    def prefix(self, string):
+        oper, arg = prefix.search(string).groups()
+
+        if arg == '':
+            arg = self.var
+
+        if oper in self.commands.keys():
+            oper = self.commands[oper]
+        else:
+            return fn.partial(error.InvalidSymbolError, char = oper)
+
+        arg = self.eval(arg)
+        ret = oper(arg)
+
+        if not_none(ret):
+            self.variables[self.var] = ret
+
+    def function(self, string):
+        matches = function.search(string).groups()
+        indicies = list(filter(lambda a: not_none(matches[a]), range(len(matches))))
+        mode = min(indicies)
+
+        matches = list(filter(not_none, matches))
+
+        if mode == 0:
+            name, flags, code = matches
+
+            switches = []
+            for char in FLAGS:
+                switches.append(int(char in flags))
+
+            args = flags.count('@')
+            func = self.fn_shell(name, args, code, switches)
+            self.functions[name] = func
+
+        if mode == 3:
+            self.lambdas += 1
+            name = 'lambda {}'.format(self.lambdas)
+            flags, code = matches
+
+            switches = []
+            for char in FLAGS:
+                switches.append(int(char in flags))
+            
+            func = self.fn_shell(name, -1, code, switches)
+            self.functions[name] = func
+
+        if mode == 5 or mode == 7:
+            func, args = matches
+            args = list(map(lambda a: self.eval(a, True), splitting(args, '>')))
+
+            for elem in args:
+                if hasattr(elem, 'with_traceback'):
+                    return elem
+            
+            func = self.functions[func]
+            ret = func(*args)
+            
+            if not_none(ret):
+                self.variables[self.var] = ret
+            self.called = True
+
+    def eval(self, string, func = False):
+        if not string:
+            return None
+        
+        if string == '?':
+            try:
+                return next(self.input)
+            except StopIteration:
+                return error.NoMoreInputError
+
+        if number.search(string):
+            return eval(string)
+
+        if string[0] == '"' and string[-1] == '"':
+            valid = True
+            
+            for index, char in enumerate(string[1:-1]):
+                if char == '"':
+                    prev = string[index-1]
+                    if prev != '\\':
+                        valid = False
+
+            if valid:
+                return eval(string)
+
+            return error.InvalidQuoteSyntaxError
+
+        if string[0] == "'" and string[-1] == "'":
+            valid = True
+            
+            for index, char in enumerate(string[1:-1]):
+                if char == "'":
+                    prev = string[index-1]
+                    if prev != '\\':
+                        valid = False
+
+            if valid:
+                return eval(string)
+
+            return error.InvalidQuoteSyntaxError
+
+        if string in self.variables.keys():
+            return self.variables[string]
+
+        if string in self.functions.keys() and func:
+            return self.functions[string]
+
+        if string == '_':
+            return self.preserve
+
+        return fn.partial(error.InvalidArgumentError, arg = string)
 
     @property
-    def COMMANDS(self):
-        return {'+':self.add,
-                '-':self.minus,
-                '*':self.times,
-                '/':self.divide,
-                '\\':self.int_divide,
-                '^':self.power,
-                '>':self.greater,
-                '<':self.less,
-                '!':self.factorial,
-                '%':self.modulo,
-                '~':self.negative,
-                '=':self.equal,
-                '&':self.next,
-                '#':self.double,
-                '@':self.half,
-                '|':self.notequals,
-                
-                'N':self.not_,
-                'P':self.print,
-                'O':self.print_,
-                'H':self._print,
-                'R':self.randint,
-                'S':self.sqrt,
-                'V':self.store,
-                'G':self.get,
-                'U':self.globalget,
-                'K':self.globalsave,
+    def commands(self):
+        return {
 
-                'F':self,
-                'I':self,
-                'W':self,
-                'E':self,
-                'D':self,
-                'L':self}
+            # Infix operators
 
-    def add(self, y):        return self.x + y
-    def minus(self, y):      return self.x - y
-    def times(self, y):      return self.x * y
-    def divide(self, y):     return self.x / y
-    def int_divide(self, y): return int(self.x / y)
-    def power(self, y):      return self.x ** y
-    def greater(self, y):    return int(self.x > y)
-    def less(self, y):       return int(self.x < y)
-    def factorial(self):     return math.factorial(self.x)
-    def modulo(self, y):     return self.x % y
-    def negative(self):      return -self.x
-    def equal(self, y):      return int(self.x == y)
-    def next(self):          self.string += chr(self.x)
-    def double(self):        return self.x * 2
-    def half(self):          return self.x / 2
-    def notequals(self, y):  return int(self.x != y)
-    def not_(self):          return int(not self.x)
-    def print_(self):        print(self.x)
-    def sqrt(self):          return math.sqrt(self.x)
-    def store(self):         self.stored.append(self.x)
-    def get(self):           self.x = self.stored.pop()
+            '+' : op.add,
+            '-' : op.sub,
+            '*' : op.mul,
+            '/' : op.truediv,
+            '\\': op.floordiv,
+            '^' : pow,
+            '>' : op.gt,
+            '<' : op.lt,
+            '%' : op.mod,
+            '=' : op.eq,
+            '|' : op.ne,
+            'R' : random.randint,
+            '@' : lambda x, y: print('@:', x, end = str(y)),
 
-    def globalsave(self):
-        global GLOBALREGISTER
-        GLOBALREGISTER = self.x
-        
-    def globalget(self):     self.x = GLOBALREGISTER
-        
-    def _print(self):
-        if self.string: print(end=self.string)
-        else: print(end=chr(self.x))
-            
-    def print(self):
-        if self.string: print(self.string)
-        else: print(chr(self.x))
-            
-    def randint(self,y=0):
-        if y > self.x: return random.randint(self.x, y)
-        return random.randint(y, self.x)
+            # Postfix operators
+
+            '!' : math.factorial,
+            '#' : op.neg,
+            'N' : op.not_,
+            'O' : print,
+            'o' : fn.partial(print, end = ''),
+            'H' : nest(print, chr),
+            'h' : nest(fn.partial(print, end = ''), chr),
+            'd' : fn.partial(print, end = ' '),
+            '_' : lambda _: self.preserve
+
+        }
+
+    @property
+    def cons(self):
+        return {
+
+            'W': whileloop,
+            'F': forloop,
+            'E': each,
+            'I': ifstatement,
+
+        }
 
 addpp.Script = Script
 addpp.VerboseScript = VerboseScript
