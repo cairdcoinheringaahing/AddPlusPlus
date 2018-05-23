@@ -66,6 +66,7 @@
 - **[v5.1]** : Add group command
 - **[v5.2]** : Indexing and pairs commands added
 - **[v5.3]** : Nested quicks made possible
+- **[v5.4]** : Arbitrary variable names allowed - some commands removed
 
 [v0.0]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/b3210742638b802179fdf014081af39e32d2c901
 [v0.1]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/f120f7624530f7c69c26e6e082d6f76f5be85b5d
@@ -123,3 +124,4 @@
 [v5.1]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/894de233c9d8d8f758985e501d334b187491154c
 [v5.2]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/ae9e5a9740f9effe14b28bec2dfa8f0242fbdd59
 [v5.3]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/f7b3dee0601fb73a4379408324801bc11016ebd0
+[v5.4]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/1620bf1696669d4e868b5fd5ab983cd45b8b340a
