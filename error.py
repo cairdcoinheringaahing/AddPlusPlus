@@ -16,15 +16,6 @@ class UnableToRetrieveFunctionError(Exception):
 
         super(UnableToRetrieveFunctionError, self).__init__(self.message)
 
-class EmptySecondStackError(Exception):
-    def __init__(self, num, line):
-        
-        self.message = '''Fatal error: EmptySecondStackError
-    line {}: '{}'
-        The second stack is empty, and is unable to be popped from'''.format(num, line)
-
-        super(EmptySecondStackError, self).__init__(self.message)
-        
 class IncongruentTypesError(Exception):
     def __init__(self, num, line, command):
 
@@ -33,6 +24,15 @@ class IncongruentTypesError(Exception):
         Unable to perform the command '{}' due to inconsistent type operands'''.format(num, line, command)
 
         super(IncongruentTypesError, self).__init__(self.message)
+
+class EmptySecondStackError(Exception):
+    def __init__(self, num, line):
+        
+        self.message = '''Fatal error: EmptySecondStackError
+    line {}: '{}'
+        The second stack is empty, and is unable to be popped from'''.format(num, line)
+
+        super(EmptySecondStackError, self).__init__(self.message)
 
 class NoMoreInputError(Exception):
     def __init__(self, num, line):
@@ -44,7 +44,7 @@ class NoMoreInputError(Exception):
         super(NoMoreInputError, self).__init__(self.message)
 
 class InvalidSymbolError(Exception):
-    def __init__(self, num, line, char):
+    def __init__(self, num, line, char = None):
         
         self.message = '''Fatal error: InvalidSymbolError
     line {}: '{}'
@@ -60,6 +60,43 @@ class DivisionByZeroError(Exception):
         The laws of mathematics dictate that you are unable to divide by 0'''.format(num, line)
 
         super(DivisionByZeroError, self).__init__(self.message)
+
+class InvalidQuoteSyntaxError(Exception):
+    def __init__(self, num, line):
+
+        self.message = '''Fatal error: InvalidQuoteSyntaxError
+    line {}: '{}'
+        Quotes must be escaped in strings'''.format(num, line)
+
+        super(InvalidQuoteSyntaxError, self).__init__(self.message)
+
+class InvalidArgumentError(Exception):
+    def __init__(self, num, line, arg = None):
+
+        self.message = '''Fatal error: InvalidArgumentError
+    line {}: '{}'
+        {} is an invalid function argument'''.format(num, line, arg)
+
+        super(InvalidArgumentError, self).__init__(self.message)
+
+class InvalidSyntaxError(Exception):
+    def __init__(self, num, line):
+
+        self.message = '''Fatal error: InvalidSyntaxError
+    line {}: '{}'
+        Invalid syntax'''.format(num, line)
+
+        super(InvalidSyntaxError, self).__init__(self.message)
+
+class UnknownVariableError(Exception):
+    def __init__(self, num, line, var):
+
+        self.message = '''Fatal error: UnknownVariableError
+    line {}: '{}'
+        Unknown variable reference: '{}'.
+        Funcargs should be defined with @#<var> to keep'''.format(num, line, var)
+
+        super(UnknownVariableError, self).__init__(self.message)
 
 class PythonError(Exception):
     def __init__(self, num, line, error):
