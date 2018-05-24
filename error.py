@@ -94,7 +94,7 @@ class UnknownVariableError(Exception):
         self.message = '''Fatal error: UnknownVariableError
     line {}: '{}'
         Unknown variable reference: '{}'.
-        Funcargs should be defined with @#<var> to keep'''.format(num, line, var)
+        Funcargs should be defined with @#<var> to maintain access'''.format(num, line, var)
 
         super(UnknownVariableError, self).__init__(self.message)
 
