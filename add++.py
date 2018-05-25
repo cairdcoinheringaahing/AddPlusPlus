@@ -13,13 +13,34 @@ import sys
 import error
 
 GLOBALREGISTER = None
-VERSION = 5.4
+VERSION = 5.5
 
 identity = lambda a: a
 
 INFIX = '+*/\^><%=|RD-'
 PREFIX = '!#NROoHhd_'
-FLAGS = '*^?:!~#'
+
+DEFAULT = {
+    
+    '*': False,
+    '^': False,
+    '?': False,
+    ':': False,
+    '!': False,
+    '~': False,
+    '#': False,
+    '&': False,
+    
+    '@': list(),
+
+    'lambda': False,
+
+}
+
+FLAGS = list(DEFAULT.keys())
+FLAGS.remove('@')
+FLAGS.remove('lambda')
+FLAGS = ''.join(FLAGS)
 
 number = re.compile(r'''
 
@@ -42,39 +63,39 @@ number = re.compile(r'''
 
 varassign = re.compile(r'''
 
-    ^           # Match the start of the line
-    ([A-Za-z]+) # Then a series of letters (var)
-    :           # Followed by a colon
-    (.*)$       # Then the rest of the line (val)
+    ^
+    ([A-Za-z]+)
+    :
+    (.*)$
 
 ''', re.VERBOSE)
 
 varswap = re.compile(r'''
                      
-    ^           # Match the start of the line
-    ([A-Za-z]+) # Then a series of letters (var1)
-    &           # Then an ampersand
-    ([A-Za-z]+) # Then another series of letters (var2_
-    $           # Then the end of the line
+    ^
+    ([A-Za-z]+)
+    &
+    ([A-Za-z]+)
+    $
 
 ''', re.VERBOSE)
 
 varactive = re.compile(r'''
 
-    ^           # Match the start of the line
-    `           # Then a backtick
-    ([A-Za-z]+) # Then a series of letters (var)
-    $           # Then the end of the line
+    ^
+    `
+    ([A-Za-z]+)
+    $
 
 ''', re.VERBOSE)
 
 comment = re.compile(r'''
 
-    ^           # Match the start of the line
-    \s+         # Followed by whitespace
-    (.*?)       # Then anything that isn't a semicolon
-    (;          # Followed by a semicolon (comment)
-    .*)?$       # Then anything until the end of the line
+    ^
+    \s+
+    (.*?)
+    (;
+    .*)?$
 
 ''', re.VERBOSE)
 
@@ -97,33 +118,33 @@ prefix = re.compile(r'''
 
 construct = re.compile(r'''
 
-    ^(                      # Match the start of the line
-        ((W|I)              # Either a W or an I (while/if statements)
-         ([A-Za-z]+         # ...followed by a series of letters (var1)
-          [{}]              # ...then an infix command
-          [A-Za-z]+)        # ...then the second series of letters (var2)
-         |                  # OR
-         ([{}]              # ...followed by a prefix command
-          ([A-Za-z]+|.*?))) # ...then a series of letters (var)
-        |(F([A-Za-z]+|.*?)) # OR, match an F, followed by a var
-        |(E([A-Za-z]+|.*?)) # OR, match an E, followed by a var
-    ),                      # End that with a comma
-    (.*)$                   # Then the rest of the line
+    ^(
+        ((W|I)
+         ([A-Za-z]+
+          [{}]
+          [A-Za-z]+)
+         |
+         ([{}]
+          ([A-Za-z]+|.*?)))
+        |(F([A-Za-z]+|.*?))
+        |(E([A-Za-z]+|.*?))
+    ),
+    (.*)$
 
 '''.format(INFIX, PREFIX), re.VERBOSE)
 
 function = re.compile(r'''
 
     ^
-    (?:D,([A-Za-z]+),([@{}]*),(.*)$)
+    (?:D,([A-Za-z]+),((?:[@#]{}[A-Za-z]+|[@{}]|[^,])*),(.*)$)
     |
-    (?:L([{}]*),(.*)$)
+    (?:L((?:[{}]|[^,])*),(.*)$)
     |
     (?:\$(lambda\ \d+)>?(.*)$)
     |
     (?:\$([A-Za-z]+)>?(.*)$)
 
-'''.format(FLAGS, FLAGS), re.VERBOSE)
+'''.format('{1,2}', FLAGS, FLAGS), re.VERBOSE)
 
 class addpp(object):
     def __setattr__(self, name, value):
@@ -132,10 +153,10 @@ class addpp(object):
 addpp.code_page = '''€§«»Þþ¦¬£\t\nªº\r↑↓¢Ñ×¡¿ß‽⁇⁈⁉ΣΠΩΞΔΛ !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~'''
 
 @contextlib.contextmanager
-def suppress_output():
-    with open(os.devnull, "w") as devnull:
+def suppress_output(pipe = os.devnull):
+    with open(pipe, 'w') as output:
         old_stdout = sys.stdout
-        sys.stdout = devnull
+        sys.stdout = output
         try:  
             yield
         finally:
@@ -203,45 +224,45 @@ def splitting(string, splitter):
 
     return cmds
 
-def whileloop(inputs, var, v, cond, *run):
+def whileloop(inputs, var, v, funcs, cond, *run):
     run = '\n'.join(run)
-    while Script(cond, inputs, loop = True, vars_ = [var, v]).variables['#']:
-        state = Script(run, inputs, vars_ = [var, v])
+    while Script(cond, inputs, loop = True, vars_ = [var, v, funcs]).variables['#']:
+        state = Script(run, inputs, vars_ = [var, v, funcs])
         var = state.variables
         v = state.var
     return var.copy()
 
-def forloop(inputs, var, v, itervar, *run):
+def forloop(inputs, var, v, funcs, itervar, *run):
     run = '\n'.join(run)
     itervar = var[itervar]
-    for i in range(itervar):
+    for i in range(1, itervar+1):
         var['i'] = i
-        state = Script(run, inputs, vars_ = [var, v])
+        state = Script(run, inputs, vars_ = [var, v, funcs])
         var = state.variables
         v = state.var
         
     var.pop('i', None)
     return var.copy()
 
-def each(inputs, var, v, itervar, *run):
+def each(inputs, var, v, funcs, itervar, *run):
     run = '\n'.join(run)
     itervar = var[itervar]
     if isinstance(itervar, (int, float)):
-        itervar = range(int(itervar))
+        itervar = range(1, int(itervar)+1)
 
     for i in itervar:
         var['i'] = i
-        state = Script(run, inputs, vars_ = [var, v])
+        state = Script(run, inputs, vars_ = [var, v, funcs])
         var = state.variables
         v = state.var
 
     var.pop('i', None)
     return var.copy()
 
-def ifstatement(inputs, var, v, cond, *run):
+def ifstatement(inputs, var, v, funcs, cond, *run):
     run = '\n'.join(run)
-    if Script(cond, inputs, loop = True, vars_ = [var, v]).variables['#']:
-        state = Script(run, inputs, vars_ = [var, v])
+    if Script(cond, inputs, loop = True, vars_ = [var, v, funcs]).variables['#']:
+        state = Script(run, inputs, vars_ = [var, v, funcs])
         var = state.variables
         v = state.var
     return var.copy()
@@ -250,12 +271,13 @@ def convert_version(version):
     # In  : 3
     # Out : vers/v3.py
     # In  : 4.3
-    # Out : vers/v4/v4v3.py
+    # Out : vers/v4v3.py
     # In  : 2.5.1
-    # Out : vers/v2/v2v5/v2v5v1.py
+    # Out : vers/v2v5v1.py
 
     if version.endswith('.0') and version.count('.') == 1:
         version = str(int(eval(version)))
+        
     version = version.split('.')
     folder = 'vers.v' + 'v'.join(version)
 
@@ -332,12 +354,12 @@ def initiate(settings, executor):
     if settings.error:
         executor(settings.code, settings.input,
                  [settings.implicit, settings.specify],
-                 settings.tokens)
+                 settings.tokens, settings.debug)
     else:
         try:
             executor(settings.code, settings.input,
                      [settings.implicit, settings.specify],
-                     settings.tokens)
+                     settings.tokens, settings.debug)
         except Exception as err:
             print(err, file = sys.stderr)
 
@@ -557,7 +579,7 @@ def transfunc(code):
         final.append(line)
     return '\n'.join(final)
 
-def VerboseScript(code, inputs, function, tokens, vall, vvan, vfun, vout, settings):
+def VerboseScript(code, inputs, function, tokens, debug, vall, vvan, vfun, vout, settings):
     implicit, func = function
     
     if vall or vvan:
@@ -603,7 +625,7 @@ class Stack(list):
         return out.strip() + ']'
 
 class Null:
-    def __init__(self, value):
+    def __init__(self, value = None):
         self.value = value
 
     def __repr__(self):
@@ -612,18 +634,34 @@ class Null:
     def __str__(self):
         return 'Null'
 
+    def __eq__(self, other):
+        return other == Null or isinstance(other, Null)
+
 class StackScript:
 
     def __call__(self, code):
-        args = [self.name, code, self.args, self.functions,
-                Stack(self.args), self.line, self.outer, self.tokens, self.vars]
+        args = [
+            self.name,
+            code,
+            [
+                self.args,
+                self.varargs
+            ],
+            self.functions,
+            Stack(self.args),
+            self.line,
+            self.outer,
+            self.tokens,
+            self.vars
+        ]
+        
         return StackScript(*args)
 
     def __init__(self, name, code, args, funcs, stack,
                  line, outer, tokens, vars_, recur = False):
         
-        self.args = args
-        self.register = args if args else 0
+        self.args, varargs = args
+        self.register = self.args.copy() if self.args else 0
         self.stacks = [stack]
         self.index = 0
         
@@ -639,6 +677,10 @@ class StackScript:
         self.vars = vars_
         
         self.code = self.tokenize(code + ' ', tokens)
+
+        self.varargs = {}
+        while varargs:
+            self.varargs.update(varargs.pop(0))
         
         cont = False
 
@@ -651,6 +693,7 @@ class StackScript:
                     break
                 except:
                     self.stacks.append(Stack())
+                    
             if cont:
                 cont -= 1
                 continue
@@ -743,7 +786,13 @@ class StackScript:
         if len(cmd) == 1:
             cmd = cmd[0]
 
-        if cmd[0] == '{' and cmd[-1] == '}':
+        if quick == 'Λ':
+            ret = (self.varref(*cmd), 1)
+
+        elif quick == 'Ξ':
+            ret = (self.varref(''.join(cmd)), 1)
+
+        elif cmd[0] == '{' and cmd[-1] == '}':
             cmd = ''.join(cmd)
             func = self.functions[cmd[1:-1]]
             ret = self.QUICKS[quick][1]((func.args, func), self.stack.pop())
@@ -774,10 +823,8 @@ class StackScript:
         
         final = []
         
-        stemp = ''
-        ctemp = ''
-        vtemp = ''
-        num = ''
+        # Num, String, Call, Var, Ref
+        temps = ['', '', '', '', '']
         
         instr = False
         incall = False
@@ -795,46 +842,49 @@ class StackScript:
             
             if char == '"': instr = not instr
             if char == '{': incall = True
-            if char == '}': incall = False; ctemp += '}'; continue
+            if char == '}': incall = False; temps[2] += '}'; continue
             if char == '`': invar = not invar;
 	    
-            if instr:    stemp += char
-            elif incall: ctemp += char
-            elif invar:  vtemp += char
+            if instr:    temps[1] += char
+            elif incall: temps[2] += char
+            elif invar:  temps[3] += char
             else:
-                if stemp:
-                    final.append(stemp)
-                    stemp = ''
-                if ctemp:
-                    final.append(ctemp)
-                    ctemp = ''
-                if vtemp:
-                    final.append(vtemp)
-                    vtemp = ''
+                if temps[1]:
+                    final.append(temps[1])
+                    temps[1] = ''
+                    
+                if temps[2]:
+                    final.append(temps[2])
+                    temps[2] = ''
+                    
+                if temps[3]:
+                    final.append(temps[3])
+                    temps[3] = ''
                     
                 if isdigit(char):
                     try:
                         if char == '-':
                             if text[text.index(char)+1].isdigit():
-                                num += char
+                                temps[0] += char
                         else:
-                            num += char
+                            temps[0] += char
                     except: final.append(char)
                     
                 else:
-                    if num:
-                        final.append(num)
-                        num = ''
+                    if temps[0]:
+                        final.append(temps[0])
+                        temps[0] = ''
                     final.append(char)
 
-        if stemp: final.append(stemp)
-        if ctemp: final.append(ctemp)
-        if vtemp: final.append(vtemp)
-        if num: final.append(num)
+        if temps[0]: final.append(temps[0])
+        if temps[1]: final.append(temps[1])
+        if temps[2]: final.append(temps[2])
+        if temps[3]: final.append(temps[3])
+        del temps
         
         tokens = []
         for i, f in enumerate(final):
-            if f in 'Bb':
+            if f in 'Bb' and final[i+1] not in self.quicks + '{':
                 tokens.append(f + final.pop(i + 1))
             elif f in '" `':
                 pass
@@ -929,6 +979,9 @@ class StackScript:
                 '¿': ( 0, self.quickternary                             ),
                 'ß': ( 1, self.quicksplat                               ),
                 'Δ': ( 1, self.quickgroupadjacent                       ),
+                
+                'Λ': ( 1, self.varref,                                  ),
+                'Ξ': ( 0, self.varref,                                  ),
                }
     
     @property
@@ -1755,7 +1808,7 @@ class StackScript:
                 final.append(s)
         return final
 	
-    def run(self,flag,text):
+    def run(self, flag, text):
         ret = self.stacks[self.index]
         if flag:
             return ret
@@ -1793,6 +1846,12 @@ class StackScript:
             return chr(int(abs(value)))
         except:
             return str(value)
+
+    def varref(self, var):
+        if var in self.varargs.keys():
+            return self.varargs[var]
+
+        raise error.UnknownVariableError(self.line, self.outer.split('\n')[self.line-1], var)
 		
     def wrap(self):
         array = self.stack.copy()
@@ -1801,58 +1860,113 @@ class StackScript:
 
 class Function:
 
-    def __init__(self, name, args, code, flags,
+    def __init__(self, name, code, switches,
                  line = 0, g_code = "", outerf = {},
                  tkns = False, vars_ = {}):
         
         self.name = name
-        self.args = args if args != -1 else 0
-        self.lamb = args == -1
         self.code = code
         self.stack = Stack()
-        self.flags = list(flags)
+        self.switches = switches.copy()
         self.line = line
         self.gen = g_code
         self.outerf = outerf
         self.tkns = tkns
         self.vars = vars_
+        
+        self.lamb = self.switches['lambda']
+        self.args = len(self.switches['@'])
+        self.original = self.switches['@'].copy()
+
+        self.calls = 0
 
     def __call__(self, *args, funccall = False, recur = False):
-        if not self.flags[2]:
-            args = list(args)[:self.args]
-            while len(args) != self.args:
-                args.append(-1)
+        prov = []
+        if self.calls:
+            self.switches['@'] = self.original.copy()
 
-        if self.flags[6]:
-            args = args[::-1]
-                
-        if self.flags[4]:
-            self.stack.push(list(args))
-        else:
-            self.stack.push(*args)
+        self.calls += 1
+        args = list(args)
+        nulls = 0
 
-        if self.flags[5]:
-            arr = []
-            for element in self.stack:
-                if hasattr(element, '__iter__'):
-                    for i in element: arr.append(i)
-                else:
-                    arr.append(element)
-            self.stack = Stack(arr.copy())
-            
-        script = StackScript(self.name, self.code, args, self.outerf,
-                             self.stack, self.line, self.gen, self.tkns,
-                             self.vars, recur)
-        value = script.run(*self.flags[:2])
-        self.stack = Stack()
-        
-        if self.flags[3]:
-            print(value)
-            if funccall:
-                return value
+        for elem in self.switches['@']:
+            if elem == Null:
+                nulls += 1
+            if isinstance(elem, dict):
+                nulls += sum(i == Null for i in elem.values())
+
+        while len(args) < nulls:
+            args.append(-1)
+
+        filtrate = []
+        for index, elem in enumerate(self.switches['@']):
+            if isinstance(elem, dict):
+                for key in elem.keys():
+                    if elem[key] == Null:
+                        elem[key] = args.pop(0)
+                        
+            if elem == Null:
+                self.switches['@'][index] = args.pop(0)
+
+            elem = self.switches['@'][index]
+            if not isinstance(elem, dict):
+                prov.append(elem)
             else:
-                return Null(value)
-        return int(value) if type(value) == bool else value
+                filtrate.append(elem)
+
+        if self.switches['?'] or self.switches['lambda']:
+            prov.extend(args)
+
+        if self.switches['!']:
+            prov = [prov[:]]
+
+        if self.switches['~']:
+            prov = sum(prov, [])
+
+        if self.switches['#']:
+            prov = prov[::-1]
+
+        self.stack.push(*prov)
+
+        script_obj = fn.partial(
+
+            StackScript,
+
+            self.name,
+            self.code,
+            [
+                prov,
+                filtrate,
+            ],
+            self.outerf,
+            self.stack,
+            self.line,
+            self.gen,
+            self.tkns,
+            self.vars,
+            recur,
+
+        )
+
+        ret = script_obj().run(self.switches['*'], self.switches['^'])
+
+        if isinstance(ret, (list, Stack)):
+            ret = Stack(map(lambda a: int(a) if isinstance(a, bool) else a, ret))
+            
+        if isinstance(ret, bool):
+            ret = int(ret)
+
+        self.stack = Stack()
+        self.switches['@'] = list()
+        
+        if self.switches[':']:
+            print(ret)
+            if funccall:
+                return ret
+            else:
+                return Null()
+
+        return ret
         
     def __repr__(self):
         return "<Function ${}: '{}'>".format(self.name, self.code)
@@ -1860,7 +1974,7 @@ class Function:
 class Script:
 
     def __init__(self, code, inputs, implicit = [False, False],
-                 tokens = False, loop = False, vars_ = None):
+                 tokens = False, debug = False, loop = False, vars_ = None):
 
         code = code.split('\n')
 
@@ -1868,18 +1982,21 @@ class Script:
         self.preserve = inputs
         self.input = iter(inputs)
         self.implicit, self.specify = implicit
-        self.display_tokens = tokens
+        self.display_tokens = debug
+        self.func_tokens = tokens
         self.called = False
         
         self.lambdas = 0
-        self.functions = collections.OrderedDict()
 
         if vars_ is None:
             self.variables = {'x': 0, 'y': 0}
             self.var = 'x'
+            self.functions = collections.OrderedDict()
+            
         else:
             self.variables = vars_[0].copy()
             self.var = vars_[1]
+            self.functions = vars_[2].copy()
 
         if loop:
             self.variables['#'] = 0
@@ -1887,12 +2004,12 @@ class Script:
 
         for index, line in enumerate(code):
             if comment.search(line):
-                line = line.split(';')[0]
-                self.code[-1] += line.strip()
+                line = line.split(';')[0].strip()
+                self.code[-1] += line
                 
             else:
-                line = line.split(';')[0]
-                self.code.append(line.strip())
+                line = line.split(';')[0].strip()
+                self.code.append(line)
 
         self.code = list(filter(None, self.code))
 
@@ -1902,18 +2019,19 @@ class Script:
                                            line     = self.index,
                                            g_code   = '\n'.join(self.code),
                                            outerf   = self.functions,
-                                           tkns     = self.display_tokens,
-                                           vars_    = self.variables
+                                           tkns     = self.func_tokens,
+                                           vars_    = self.variables,
                                        )
             
             category = self.categorise(line)
             ret = category(line)
 
             if hasattr(ret, 'with_traceback'):
-                raise ret(index, line)
+                raise ret(index + 1, line)
 
             if self.display_tokens:
-                print('    {:25} {:20} {:45} {}'.format(line, str(self.variables), str(ret), self.var))
+                msg = '    {:%s} {:20} {:40} {}' % max(map(len, self.code))
+                print(msg.format(line, str(self.variables), str(ret), self.var))
 
         if self.implicit and not self.called and self.functions:
 
@@ -1943,25 +2061,25 @@ class Script:
                 print(ret)
                 
     def categorise(self, string):
-        if function.search(string):
+        if function.match(string):
             return self.function
         
-        if varassign.search(string):
+        if varassign.match(string):
             return self.assign
         
-        if varswap.search(string):
+        if varswap.match(string):
             return self.swap
         
-        if varactive.search(string):
+        if varactive.match(string):
             return self.activate
 
-        if construct.search(string):
+        if construct.match(string):
             return self.construct
 
-        if infix.search(string):
+        if infix.match(string):
             return self.infix
 
-        if prefix.search(string):
+        if prefix.match(string):
             return self.prefix
 
         return lambda _: error.InvalidSyntaxError
@@ -1995,7 +2113,8 @@ class Script:
 
         cmds = splitting(body, ',')
 
-        self.variables = loop(self.input, self.variables.copy(), self.var, cond, *cmds)
+        self.variables = loop(self.input, self.variables.copy(), self.var,
+                              self.functions.copy(), cond, *cmds)
 
     def infix(self, string):
         left, oper, right = infix.search(string).groups()
@@ -2046,13 +2165,31 @@ class Script:
 
         if mode == 0:
             name, flags, code = matches
+            flags = re.findall(r'[@#]{}[A-Za-z]+|[@{}]'.format('{1,2}', FLAGS), flags)
 
-            switches = []
-            for char in FLAGS:
-                switches.append(int(char in flags))
+            switches = DEFAULT.copy()
+            switches['@'] = list()
 
-            args = flags.count('@')
-            func = self.fn_shell(name, args, code, switches)
+            for switch in flags:
+                if switch[0] in '@#' and len(switch) > 1:
+                    types, switch = re.findall(r'[@#]{1,2}|[A-Za-z]+', switch)
+                    types = ''.join(sorted(types))
+                    
+                    if types == '#':
+                        switches['@'].append(self.variables[switch])
+                    if types == '@':
+                        switches['@'].append({switch: Null()})
+                    if types == '#@':
+                        switches['@'].append({switch: self.variables[switch]})
+
+                elif switch == '@':
+                    switches['@'].append(Null())
+
+                else:
+                    if switch in switches.keys():
+                        switches[switch] = True
+
+            func = self.fn_shell(name, code, switches)
             self.functions[name] = func
 
         if mode == 3:
@@ -2060,11 +2197,15 @@ class Script:
             name = 'lambda {}'.format(self.lambdas)
             flags, code = matches
 
-            switches = []
-            for char in FLAGS:
-                switches.append(int(char in flags))
+            switches = DEFAULT.copy()
+            switches['@'] = list()
+            switches['lambda'] = True
             
-            func = self.fn_shell(name, -1, code, switches)
+            for switch in flags:
+                if switch in switches.keys():
+                        switches[switch] = True
+            
+            func = self.fn_shell(name, code, switches)
             self.functions[name] = func
 
         if mode == 5 or mode == 7:
@@ -2074,6 +2215,8 @@ class Script:
             for elem in args:
                 if hasattr(elem, 'with_traceback'):
                     return elem
+                if isinstance(elem, fn.partial) and hasattr(elem.func, 'with_traceback'):
+                    return elem.func
             
             func = self.functions[func]
             ret = func(*args)
@@ -2152,7 +2295,7 @@ class Script:
             '=' : op.eq,
             '|' : op.ne,
             'R' : random.randint,
-            '@' : lambda x, y: print('@:', x, end = str(y)),
+            '@' : lambda x, y: print(x, end = str(y)),
 
             # Postfix operators
 
@@ -2199,6 +2342,7 @@ if __name__ == '__main__':
     parser.add_argument('-vo', '--verbose-out', help = 'Output golfed code from verbose', action = a)
     parser.add_argument('-vh', '--version-help', help = 'Output all versions available', action = a)
     parser.add_argument('-o', '--suppress', help = 'Suppress output', action = a)
+    parser.add_argument('-d', '--debug', help = 'Output information in vanilla mode\nWorks for versions 5.5 or greater', action = a)
     
     parser.add_argument('--version', help = 'Specify version to use', metavar = 'VERSION')
     parser.add_argument('--specify', help = 'Specify implcit function', metavar = 'FUNCTION')
@@ -2236,6 +2380,9 @@ if __name__ == '__main__':
         addpp = __import__(settings.verfile)
         addpp = eval('addpp.{}'.format(settings.verfile.split('.')[-1]))
 
+    if settings.debug and settings.vernum < 5.5:
+        raise NotImplementedError('The --debug flag only works on versions 5.5 or greater')
+
     if settings.cmd:
         code = settings.program
     elif settings.file:
@@ -2249,7 +2396,7 @@ if __name__ == '__main__':
                 code += addpp.code_page[ordinal]
 
     if settings.useverbose and settings.vernum >= 5:
-        executor = lambda c, i, f, t: addpp.VerboseScript(c, i, f, t,
+        executor = lambda c, i, f, t, d: addpp.VerboseScript(c, i, f, t, d,
                                                 *(settings.verbose + [settings]))
     else:
         executor = addpp.Script
