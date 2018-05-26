@@ -1,108 +1,53 @@
-class EmptyStackError(Exception):
-    def __init__(self, num, line):
-        
-        self.message = '''Fatal error: EmptyStackError
+import sys
+
+def base(name, num, line, reason):
+    message = '''Fatal error: {}Error
     line {}: '{}'
-        The stack is empty, and is unable to be popped from'''.format(num, line)
-        
-        super(EmptyStackError, self).__init__(self.message)
+        {}'''.format(name, num, line, reason)
 
-class UnableToRetrieveFunctionError(Exception):
-    def __init__(self, num, line, name):
+    print(message, file = sys.stderr)
+    sys.exit(1)
 
-        self.message = '''Fatal error: UnableToRetrieveFunctionError
-    line {}: '{}'
-        Unable to retrieve function {}. {} must be defined before calling'''.format(num, line, name, name)
+def DivisionByZeroError(num, line):
+    base('DivisionByZero', num, line, 'Division by 0 is undefined')
 
-        super(UnableToRetrieveFunctionError, self).__init__(self.message)
+def EmptySecondStackError(num, line):
+    base('EmptySecondStack', num, line, 'The second stack is empty and is unable to be popped from')
 
-class IncongruentTypesError(Exception):
-    def __init__(self, num, line, command):
+def EmptyStackError(num, line):
+    'The stack is empty, and is unable to be popped from'
 
-        self.message = '''Fatal error: IncongruentTypesError
-    line {}: '{}'
-        Unable to perform the command '{}' due to inconsistent type operands'''.format(num, line, command)
+def IncongruentTypesError(num, line, command):
+    reason = "Unable to perform the command '{}' due to incostent type operands".format(command)
+    base('IncongruentTypes', num, line, reason)
 
-        super(IncongruentTypesError, self).__init__(self.message)
+def InvalidArgumentError(num, line, arg = None):
+    base('InvalidArgument', num, line, "'{}' is an invalid function argument".format(arg))
 
-class EmptySecondStackError(Exception):
-    def __init__(self, num, line):
-        
-        self.message = '''Fatal error: EmptySecondStackError
-    line {}: '{}'
-        The second stack is empty, and is unable to be popped from'''.format(num, line)
+def InvalidQuoteSyntaxError(num, line):
+    base('InvalidQuoteSyntax', num, line, 'Quotes must be escaped in strings')
 
-        super(EmptySecondStackError, self).__init__(self.message)
+def InvalidSymbolError(num, line, char = None):
+    base('InvalidSymbol', num, line, "The character '{}' is an invalid Add++ character".format(char))
 
-class NoMoreInputError(Exception):
-    def __init__(self, num, line):
-        
-        self.message = '''Fatal error: NoMoreInputError
-    line {}: '{}'
-        All input has been used, and cannot be used again'''.format(num, line)
+def InvalidSyntaxError(num, line):
+    base('InvalidSyntax', num, line, 'InvalidSyntax')
 
-        super(NoMoreInputError, self).__init__(self.message)
+def NoMoreInputError(num, line):
+    base('NoMoreInput', num, line, 'All input has been used and cannot be used again')
 
-class InvalidSymbolError(Exception):
-    def __init__(self, num, line, char = None):
-        
-        self.message = '''Fatal error: InvalidSymbolError
-    line {}: '{}'
-        The character '{}' is an invalid Add++ character'''.format(num, line, char)
+def UnableToRetrieveFunctionError(num, line, name):
+    reason = "Unable to retrieve function '{}'. Functions must be defined before being called".format(name)
+    base('UnableToRetrieveFunction', num, line, reason)
 
-        super(InvalidSymbolError, self).__init__(self.message)
+def UnknownVariableError(num, line, var = None):
+    reason  = "Unknown variable reference: '{}'.\n".format(var)
+    reason += "Funcargs should be defined with @#var to maintain access"
 
-class DivisionByZeroError(Exception):
-    def __init__(self, num, line):
-        
-        self.message = '''Fatal error: DivisionByZeroError
-    line {}: '{}'
-        The laws of mathematics dictate that you are unable to divide by 0'''.format(num, line)
+    base('UnknownVariable', num, line, reason)
 
-        super(DivisionByZeroError, self).__init__(self.message)
+# =-= #
 
-class InvalidQuoteSyntaxError(Exception):
-    def __init__(self, num, line):
-
-        self.message = '''Fatal error: InvalidQuoteSyntaxError
-    line {}: '{}'
-        Quotes must be escaped in strings'''.format(num, line)
-
-        super(InvalidQuoteSyntaxError, self).__init__(self.message)
-
-class InvalidArgumentError(Exception):
-    def __init__(self, num, line, arg = None):
-
-        self.message = '''Fatal error: InvalidArgumentError
-    line {}: '{}'
-        {} is an invalid function argument'''.format(num, line, arg)
-
-        super(InvalidArgumentError, self).__init__(self.message)
-
-class InvalidSyntaxError(Exception):
-    def __init__(self, num, line):
-
-        self.message = '''Fatal error: InvalidSyntaxError
-    line {}: '{}'
-        Invalid syntax'''.format(num, line)
-
-        super(InvalidSyntaxError, self).__init__(self.message)
-
-class UnknownVariableError(Exception):
-    def __init__(self, num, line, var):
-
-        self.message = '''Fatal error: UnknownVariableError
-    line {}: '{}'
-        Unknown variable reference: '{}'.
-        Funcargs should be defined with @#<var> to maintain access'''.format(num, line, var)
-
-        super(UnknownVariableError, self).__init__(self.message)
-
-class PythonError(Exception):
-    def __init__(self, num, line, error):
-
-        self.message = '''Fatal error: PythonError
-    line {}: '{}'
-        Python error raised: {}'''.format(num, line, error)
-
-        super(PythonError, self).__init__(self.message)
+def PythonError(num, line, error = None):
+    reason = 'Python error raised: {}'.format(error)
+    base('Python', num, line, reason)
