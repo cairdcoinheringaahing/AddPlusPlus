@@ -119,6 +119,36 @@ tests = [
         'Specify flag failed'
     ],
 
+    [
+        addpp.Script,
+
+        'x:10\ny:2\n]divmod\nO',
+        [],
+        [False, False],
+        False,
+        False,
+
+        '(5, 0)',
+
+        'Extensions commands failed'
+
+    ],
+
+    [
+        addpp.Script,
+
+        '}print("abc")',
+        [],
+        [False, False],
+        False,
+        False,
+
+        'abc',
+
+        'Python exec failed'
+
+    ],
+
 ]
 
 for elem in tests:
@@ -146,10 +176,9 @@ os.remove('testtemperr')
 
 for index, res in enumerate(results):
     if not res:
-        failed = tests[index][0]
-        reason = tests[index][6]
+        failed = tests[index][1]
+        reason = tests[index][7]
         
         print('; Failed test:', failed,
               '; Reason:\n; {}'.format(reason),
               sep = '\n; =-= ;\n', end = '\n\n')
-
