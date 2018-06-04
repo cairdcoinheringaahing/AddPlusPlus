@@ -11,9 +11,10 @@ import re
 import sys
 
 import error
+import extensions
 
 GLOBALREGISTER = None
-VERSION = 5.5
+VERSION = 5.7
 
 identity = lambda a: a
 
@@ -146,6 +147,21 @@ function = re.compile(r'''
 
 '''.format('{1,2}', FLAGS, FLAGS), re.VERBOSE)
 
+additionals = re.compile(r'''
+
+    ^
+    (
+        ]
+        [A-Za-z]+
+    )|
+    (
+        }
+        .*
+    )
+    $
+
+''', re.VERBOSE)
+
 class addpp(object):
     def __setattr__(self, name, value):
         super().__setattr__(name, value)
@@ -153,14 +169,22 @@ class addpp(object):
 addpp.code_page = '''€§«»Þþ¦¬£\t\nªº\r↑↓¢Ñ×¡¿ß‽⁇⁈⁉ΣΠΩΞΔΛ !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~'''
 
 @contextlib.contextmanager
-def suppress_output(pipe = os.devnull):
+def suppress_output(pipe = os.devnull, error = False):
     with open(pipe, 'w') as output:
-        old_stdout = sys.stdout
-        sys.stdout = output
+        if error:
+            old = sys.stderr
+            sys.stderr = output
+        else:
+            old = sys.stdout
+            sys.stdout = output
+        
         try:  
             yield
         finally:
-            sys.stdout = old_stdout
+            if error:
+                sys.stderr = old
+            else:
+                sys.stdout = old
 
 def isdigit(string):
     return all(i in '1234567890-.' for i in string)
@@ -1974,7 +1998,8 @@ class Function:
 class Script:
 
     def __init__(self, code, inputs, implicit = [False, False],
-                 tokens = False, debug = False, loop = False, vars_ = None):
+                 tokens = False, debug = False, loop = False,
+                 vars_ = None, history = None):
 
         code = code.split('\n')
 
@@ -1985,11 +2010,13 @@ class Script:
         self.display_tokens = debug
         self.func_tokens = tokens
         self.called = False
+        self.history = history
         
         self.lambdas = 0
 
         if vars_ is None:
-            self.variables = {'x': 0, 'y': 0}
+            self.variables = collections.OrderedDict()
+            self.variables['x'] = 0; self.variables['y'] = 0
             self.var = 'x'
             self.functions = collections.OrderedDict()
             
@@ -2022,11 +2049,15 @@ class Script:
                                            tkns     = self.func_tokens,
                                            vars_    = self.variables,
                                        )
+
+            if line == ')history':
+                print(self.history)
+                continue
             
             category = self.categorise(line)
             ret = category(line)
 
-            if hasattr(ret, 'with_traceback'):
+            if hasattr(ret, 'with_traceback') or isinstance(ret, fn.partial):
                 raise ret(index + 1, line)
 
             if self.display_tokens:
@@ -2061,6 +2092,9 @@ class Script:
                 print(ret)
                 
     def categorise(self, string):
+        if additionals.match(string):
+            return self.additionals
+        
         if function.match(string):
             return self.function
         
@@ -2084,11 +2118,37 @@ class Script:
 
         return lambda _: error.InvalidSyntaxError
 
+    def additionals(self, string):
+        mode, *string = string
+        cmd = ''.join(string)
+
+        if mode == '}':
+            exec(cmd)
+
+        if mode == ']':
+            arity, command = extensions.getcmd[cmd]
+
+            if arity == 0:
+                self.variables[self.var] = command()
+                
+            elif arity == 1:
+                try:
+                    self.variables[self.var] = command(self.variables[self.var])
+                except Exception as exc:
+                    return fn.partial(error.PythonError, error = exc)
+                
+            else:
+                vals = list(self.variables.values())[:arity]
+                try:
+                    self.variables[self.var] = command(*vals)
+                except Exception as exc:
+                    return fn.partial(error.PythonError, error = exc)
+
     def assign(self, string):
         var, val = varassign.search(string).groups()
         val = self.eval(val)
         
-        if hasattr(val, 'with_traceback'):
+        if hasattr(val, 'with_traceback') or isinstance(val, fn.partial):
             return val
 
         self.variables[var] = val
@@ -2129,15 +2189,16 @@ class Script:
         else:
             return fn.partial(error.InvalidSymbolError, char = oper)
 
-        if left.isalpha() and '_' != self.var:
-            setter = left
-        else:
-            setter = self.var
-
         left, right = self.eval(left), self.eval(right)
+        
+        if hasattr(left, 'with_traceback') or isinstance(left, fn.partial):
+            return left
+        if hasattr(right, 'with_traceback') or isinstance(right, fn.partial):
+            return right
+        
         ret = oper(left, right)
         if ret is not None:
-            self.variables[setter] = ret
+            self.variables[self.var] = ret
 
     def prefix(self, string):
         oper, arg = prefix.search(string).groups()
@@ -2151,6 +2212,9 @@ class Script:
             return fn.partial(error.InvalidSymbolError, char = oper)
 
         arg = self.eval(arg)
+        if hasattr(arg, 'with_traceback') or isinstance(arg, fn.partial):
+            return arg
+        
         ret = oper(arg)
 
         if not_none(ret):
@@ -2233,7 +2297,7 @@ class Script:
             try:
                 return next(self.input)
             except StopIteration:
-                return error.NoMoreInputError
+                return fn.partial(error.NoMoreInputError)
 
         if number.search(string):
             return eval(string)
@@ -2250,7 +2314,7 @@ class Script:
             if valid:
                 return eval(string)
 
-            return error.InvalidQuoteSyntaxError
+            return fn.partial(error.InvalidQuoteSyntaxError)
 
         if string[0] == "'" and string[-1] == "'":
             valid = True
@@ -2264,7 +2328,7 @@ class Script:
             if valid:
                 return eval(string)
 
-            return error.InvalidQuoteSyntaxError
+            return fn.partial(error.InvalidQuoteSyntaxError)
 
         if string in self.variables.keys():
             return self.variables[string]
@@ -2322,10 +2386,40 @@ class Script:
 
         }
 
+def repl(history = None):
+    if history is None:
+        history = []
+
+    codeprompt = '|>\t'
+    argvprompt = '>>\t'
+
+    code = [input(codeprompt)]
+    while code[-1]:
+        code.append(input(codeprompt))
+    code.pop()
+    code = '\n'.join(code)
+    print()
+
+    argv = [input(argvprompt)]
+    while argv[-1]:
+        argv.append(input(argvprompt))
+    argv.pop()
+    print()
+
+    try:
+        Script(code, argv, history = history)
+        history.append((code, argv))
+    except:
+        repl(history.copy())
+    
 addpp.Script = Script
 addpp.VerboseScript = VerboseScript
 
 if __name__ == '__main__':
+
+    if len(sys.argv) == 1 or (sys.argv[1] in ('-r', '--repl')):
+        repl()
+        sys.exit(0)
     
     parser = argparse.ArgumentParser(prog = './add++')
 
@@ -2334,6 +2428,7 @@ if __name__ == '__main__':
     getcode = parser.add_mutually_exclusive_group()
     getcode.add_argument('-f', '--file', help = 'Specifies that code be read from a file', action = a)
     getcode.add_argument('-c', '--cmd', '--cmdline', help = 'Specifies that code be read from the command line', action = a)
+    getcode.add_argument('-r', '--repl', help = 'Run code in a REPL environment', action = a)
 
     parser.add_argument('-e', '--error', help = 'Show full error messages', action = a)
     parser.add_argument('-i', '--implicit', help = 'Implicitly call a function at the end', action = a)
@@ -2355,6 +2450,9 @@ if __name__ == '__main__':
     parser.add_argument('program')
     parser.add_argument('input', nargs = '*', type = eval_)
     settings = parser.parse_args()
+
+    if settings.repl:
+        repl()
 
     if settings.version_help:
         print(*list(filter(
