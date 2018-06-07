@@ -2117,7 +2117,7 @@ class Script:
         if prefix.match(string):
             return self.prefix
 
-        return lambda _: error.InvalidSyntaxError
+        return lambda _: error.InvalidSyntaxError()
 
     def additionals(self, string):
         mode, *string = string
