@@ -2455,9 +2455,9 @@ if __name__ == '__main__':
         repl()
 
     if settings.version_help:
-        print(*list(filter(
-                lambda a: a not in ['__init__.py', 'error.py'] and a.endswith('.py'),
-                os.listdir('vers'))),
+        print(*sorted(filter(
+                lambda a: a not in ['__init__.py', 'error.py', 'extensions.py'] and a.endswith('.py'),
+                os.listdir('./vers'))),
               sep = '\n', file = sys.stderr)
 
     if settings.version:
