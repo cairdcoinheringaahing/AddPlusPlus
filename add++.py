@@ -604,6 +604,7 @@ def transfunc(code):
     return '\n'.join(final)
 
 def VerboseScript(code, inputs, function, tokens, debug, vall, vvan, vfun, vout, settings):
+    raise NotImplementedError()
     implicit, func = function
     
     if vall or vvan:
@@ -2061,7 +2062,7 @@ class Script:
                 raise ret(index + 1, line)
 
             if self.display_tokens:
-                msg = '    {:%s} {:20} {:40} {}' % max(map(len, self.code))
+                msg = '    {:%s} {:40} {:20} {}' % max(map(len, self.code))
                 print(msg.format(line, str(self.variables), str(ret), self.var))
 
         if self.implicit and not self.called and self.functions:
