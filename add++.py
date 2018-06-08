@@ -19,7 +19,7 @@ VERSION = 5.7
 identity = lambda a: a
 
 INFIX = '+*/\^><%=|RD-'
-PREFIX = '!#NROoHhd_'
+PREFIX = '!#NROoHhd_B'
 
 DEFAULT = {
     
@@ -123,16 +123,16 @@ construct = re.compile(r'''
         ((W|I)
          ([A-Za-z]+
           (?:
-           [+*/\^><%=|RD-]
+           [{}]
            [A-Za-z]+)?
          )|
-         ([!#NROoHhd_]
+         ([{}]
           ([A-Za-z]+|.*?)))
         |(F([A-Za-z]+|.*?))
         |(E([A-Za-z]+|.*?))
     ),
     (.*)$
-
+    
 '''.format(INFIX, PREFIX), re.VERBOSE)
 
 function = re.compile(r'''
@@ -2042,8 +2042,10 @@ class Script:
 
         self.code = list(filter(None, self.code))
 
-        for index, line in enumerate(self.code):
+        for index, line in enumerate(self.code, 1):
             self.index = index
+            self.line = line
+            
             self.fn_shell = fn.partial(Function,
                                            line     = self.index,
                                            g_code   = '\n'.join(self.code),
@@ -2060,10 +2062,10 @@ class Script:
             ret = category(line)
 
             if hasattr(ret, 'with_traceback') or isinstance(ret, fn.partial):
-                raise ret(index + 1, line)
+                raise ret(index, line)
 
             if self.display_tokens:
-                msg = '    {:%s} {:40} {:40} {}' % max(map(len, self.code))
+                msg = '    {:%s} {:40} {:20} {}' % max(map(len, self.code))
                 print(msg.format(line, str(self.variables), str(ret), self.var))
 
         if self.implicit and not self.called and self.functions:
@@ -2118,7 +2120,7 @@ class Script:
         if prefix.match(string):
             return self.prefix
 
-        return lambda _: error.InvalidSyntaxError()
+        return lambda _: error.InvalidSyntaxError(self.index, self.line)
 
     def additionals(self, string):
         mode, *string = string
@@ -2170,6 +2172,10 @@ class Script:
         loop, *head = head
 
         cond = ''.join(head)
+        
+        if cond in self.variables.keys():
+            cond = 'B' + cond
+            
         body = captures.pop().strip(',')
         loop = self.cons[loop]
 
@@ -2368,6 +2374,7 @@ class Script:
             '!' : math.factorial,
             '#' : op.neg,
             'N' : op.not_,
+            'B' : bool,
             'O' : print,
             'o' : fn.partial(print, end = ''),
             'H' : nest(print, chr),
@@ -2420,7 +2427,11 @@ addpp.VerboseScript = VerboseScript
 if __name__ == '__main__':
 
     if len(sys.argv) == 1 or (sys.argv[1] in ('-r', '--repl')):
-        repl()
+        try:
+            repl()
+        except KeyboardInterrupt:
+            sys.exit(1)
+            
         sys.exit(0)
     
     parser = argparse.ArgumentParser(prog = './add++')
