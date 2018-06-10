@@ -2300,6 +2300,7 @@ class Script:
     def eval(self, string, func = False):
         if not string:
             return None
+        string = string.strip()
         
         if string == '?':
             try:
