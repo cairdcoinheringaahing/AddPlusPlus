@@ -805,7 +805,7 @@ class StackScript:
                     self.stack.clear()
                     self.stack.push(*result)
 
-                elif result is not None and result != []:
+                elif result is not None:
                     self.stack.push(result)
 
     def runquick(self, quick, cmd):
