@@ -2173,7 +2173,7 @@ class Script:
 
         cond = ''.join(head)
         
-        if cond in self.variables.keys():
+        if cond in self.variables.keys() and loop in 'WI':
             cond = 'B' + cond
             
         body = captures.pop().strip(',')
