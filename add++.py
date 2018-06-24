@@ -377,14 +377,22 @@ def deduplicate(array):
 
 def initiate(settings, executor):
     if settings.error:
-        executor(settings.code, settings.input,
-                 [settings.implicit, settings.specify],
-                 settings.tokens, settings.debug)
+	if settings.varnum > 5.5:
+        	executor(settings.code, settings.input,
+                 	[settings.implicit, settings.specify],
+                 	settings.tokens, settings.debug)
+	else:
+		executor(settings.code, settings.input,
+                 	[settings.implicit, settings.specify], settings.tokens)
     else:
         try:
-            executor(settings.code, settings.input,
-                     [settings.implicit, settings.specify],
-                     settings.tokens, settings.debug)
+		if settings.varnum > 5.5:
+        		executor(settings.code, settings.input,
+                 		[settings.implicit, settings.specify],
+                 		settings.tokens, settings.debug)
+		else:
+			executor(settings.code, settings.input,
+                 		[settings.implicit, settings.specify], settings.tokens)
         except Exception as err:
             print(err, file = sys.stderr)
 
