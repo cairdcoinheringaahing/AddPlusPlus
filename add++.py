@@ -377,22 +377,22 @@ def deduplicate(array):
 
 def initiate(settings, executor):
     if settings.error:
-	if settings.varnum > 5.5:
-        	executor(settings.code, settings.input,
-                 	[settings.implicit, settings.specify],
-                 	settings.tokens, settings.debug)
-	else:
-		executor(settings.code, settings.input,
-                 	[settings.implicit, settings.specify], settings.tokens)
+        if settings.vernum > 5.5:
+            executor(settings.code, settings.input,
+                     [settings.implicit, settings.specify],
+                     settings.tokens, settings.debug)
+        else:
+            executor(settings.code, settings.input,
+                     [settings.implicit, settings.specify], settings.tokens)
     else:
         try:
-		if settings.varnum > 5.5:
-        		executor(settings.code, settings.input,
-                 		[settings.implicit, settings.specify],
-                 		settings.tokens, settings.debug)
-		else:
-			executor(settings.code, settings.input,
-                 		[settings.implicit, settings.specify], settings.tokens)
+            if settings.vernum > 5.5:
+                executor(settings.code, settings.input,
+                         [settings.implicit, settings.specify],
+                         settings.tokens, settings.debug)
+            else:
+                executor(settings.code, settings.input,
+                         [settings.implicit, settings.specify], settings.tokens)
         except Exception as err:
             print(err, file = sys.stderr)
 
@@ -813,7 +813,7 @@ class StackScript:
                     self.stack.clear()
                     self.stack.push(*result)
 
-                elif result is not None:
+                elif result is not None and result != []:
                     self.stack.push(result)
 
     def runquick(self, quick, cmd):
@@ -993,6 +993,7 @@ class StackScript:
 
     @property
     def QUICKS(self):
+        # ⁇⁈⁉ΣΠ
         return {
                 '€': ( 1, self.quickeach                                ),
                 '§': ( 1, self.quicksort                                ),
@@ -1013,9 +1014,11 @@ class StackScript:
                 '¿': ( 0, self.quickternary                             ),
                 'ß': ( 1, self.quicksplat                               ),
                 'Δ': ( 1, self.quickgroupadjacent                       ),
+                '×': ( 1, self.quickunwrap                              ),
+                '‽': ( 1, self.quicktable                               ),
                 
-                'Λ': ( 1, self.varref,                                  ),
-                'Ξ': ( 0, self.varref,                                  ),
+                'Λ': ( 1, self.varref                                   ),
+                'Ξ': ( 0, self.varref                                   ),
                }
     
     @property
@@ -1790,6 +1793,28 @@ class StackScript:
 
         return ret, 1
 
+    def quicktable(self, cmd, left, right = None):
+        if isinstance(cmd, list):
+            quick, cmd = cmd
+            if quick in '¬¦':
+                arity = 1
+            quick = self.QUICKS[quick][1]
+            cmd = self.COMMANDS[cmd]
+
+            pairs = []
+            if right is None:
+                right = self.stack.pop()
+                
+            ret = [quick(cmd, l, r) for l in left for r in right]
+        else:
+            _, cmd = cmd
+            if right is None:
+                right = self.stack.pop()
+
+            ret = [cmd(l, r) for l in left for r in right]
+
+        return ret, 1
+                    
     def quicktakewhile(self, cmd, left, right = None):
         if isinstance(cmd, list):
             quick, cmd = cmd
@@ -1828,6 +1853,34 @@ class StackScript:
         else:
             ret = self(elseclause).stacks.pop().pop()
         return ret, 1
+
+    def quickunwrap(self, cmd, left, right = None):
+        if arity == 2:
+            self.stack.push(right)
+        self.stack.push(left)
+
+        left = [self.stack.copy()]
+        right = None
+        
+        if isinstance(cmd, list):
+            quick, cmd = cmd
+            if quick in '¬¦':
+                arity = 1
+            quick = self.QUICKS[quick][1]
+            cmd = self.COMMANDS[cmd]
+            ret = quick(cmd, left, right)[0]
+        else:
+            arity, cmd = cmd
+
+            if arity == 2:
+                left, right = right, left
+                ret = list(map(lambda a: cmd(a, left), right))
+            elif arity == 1:
+                ret = cmd(left)
+            else:
+                ret = left
+                
+        return ret, 2
 
     # End quick commands #
 
@@ -2410,6 +2463,7 @@ def repl(history = None):
 
     codeprompt = '|>\t'
     argvprompt = '>>\t'
+    separator  = '<; === ;>'
 
     code = [input(codeprompt)]
     while code[-1]:
@@ -2427,8 +2481,11 @@ def repl(history = None):
     try:
         Script(code, argv, history = history)
         history.append((code, argv))
-    except:
-        repl(history.copy())
+    except Exception as e:
+        print(e, file = sys.stderr)
+
+    print('\n' + separator + '\n')
+    repl(history.copy())
     
 addpp.Script = Script
 addpp.VerboseScript = VerboseScript
