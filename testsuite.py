@@ -182,3 +182,9 @@ for index, res in enumerate(results):
         print('; Failed test:', failed,
               '; Reason:\n; {}'.format(reason),
               sep = '\n; =-= ;\n', end = '\n\n')
+
+try:
+    failed
+    input()
+except:
+    input('No failures')
