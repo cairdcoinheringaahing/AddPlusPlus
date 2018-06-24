@@ -1196,9 +1196,9 @@ class StackScript:
                 'b+':( 1, lambda x: fn.reduce(op.add, x)                 ),
                 'b/':( 1, lambda x: fn.reduce(op.truediv, x)             ),
                 'b:':(-1, lambda: Null                                   ),
-                'b<':(-1, lambda: Null                                   ),
+                'b<':( 2, lambda x, y: min([x, y])                       ),
                 'b=':( 1, lambda x: self.eq(*x)                          ),
-                'b>':(-1, lambda: Null                                   ),
+                'b>':( 2, lambda x, y: max([x, y])                       ),
                 'b?':(-1, lambda: Null                                   ),
                 'b@':(-1, lambda: Null                                   ),
 
