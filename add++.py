@@ -346,7 +346,7 @@ def groupby(func, array):
 
 def flatten_array(array):
    flat = []
-   if type(array) == list:
+   if isinstance(array, list):
        for item in array:
            flat += flatten_array(item)
    else:
@@ -1047,7 +1047,7 @@ class StackScript:
                 'C': ( 1, lambda x: chr(x)                              ),
                 'D': ( 1, lambda x: self.stack[-x]                      ),
                 'E': ( 1, lambda x: list(map(list, enumerate(x, 1)))    ),
-                'F': ( 0, lambda: self.stack.push(*self.factors())      ),
+                'F': ( 1, lambda x: self.stack.push(*self.factors(x))   ),
                 'G': ( 0, lambda: self.stack.push(self.register)        ),
                 'H': ( 0, lambda: print(''.join(map(str, self.stack)))  ),
                 'I': (-1, lambda: Null                                  ),
@@ -1196,9 +1196,9 @@ class StackScript:
                 'b+':( 1, lambda x: fn.reduce(op.add, x)                 ),
                 'b/':( 1, lambda x: fn.reduce(op.truediv, x)             ),
                 'b:':(-1, lambda: Null                                   ),
-                'b<':( 2, lambda x, y: min([x, y])                       ),
+                'b<':(-1, lambda: Null                                   ),
                 'b=':( 1, lambda x: self.eq(*x)                          ),
-                'b>':( 2, lambda x, y: max([x, y])                       ),
+                'b>':(-1, lambda: Null                                   ),
                 'b?':(-1, lambda: Null                                   ),
                 'b@':(-1, lambda: Null                                   ),
 
@@ -1207,7 +1207,7 @@ class StackScript:
                 'bC':(-1, lambda: Null                                   ),
                 'bD':(-1, lambda: Null                                   ),
                 'bE':(-1, lambda: Null                                   ),
-                'bF':( 1, lambda x: self.flatten(x)                      ),
+                'bF':( 1, lambda x: flatten_array(x)                     ),
                 'bG':(-1, lambda: Null                                   ),
                 'bH':(-1, lambda: Null                                   ),
                 'bI':(-1, lambda: Null                                   ),
@@ -1275,10 +1275,15 @@ class StackScript:
         global GLOBALREGISTER
         GLOBALREGISTER = value
         
-    def collect(self):
+    def collect(self, iterable = None):
+        usestack = False
+        if iterable is None:
+            iterable = self.stack
+            usestack = True
+            
         array = []
         sub_array = []
-        for element in self.stack:
+        for element in iterable:
             if type(element) == list:
                 if sub_array:
                     array.append(sub_array)
@@ -1288,7 +1293,11 @@ class StackScript:
                 sub_array.append(element)
         if sub_array:
             array.append(sub_array)
-        self.stacks[self.index] = Stack(array)
+            
+        if usestack:
+            self.stacks[self.index] = Stack(array)
+        else:
+            return array
 		
     def columns(self):
         self.stacks[self.index] = Stack(map(list, zip(*self.stack)))
@@ -1300,20 +1309,22 @@ class StackScript:
         incs = [args[i] == args[i-1] for i in range(1, len(args))]
         return int(all(incs))
     
-    def factors(self):
+    def factors(self, x):
         lof = []
-        x = self.stack.pop()
-        if type(x) == str:
+        if hasattr(x, '__iter__'):
             return list(x)
-        for i in range(1,int(x)):
+        
+        for i in range(1, int(x)):
             if x%i == 0:
                 lof.append(i)
+                
         return lof
 	
     def flatten(self):
-       copy = flatten_array(list(self.stack))
-       self.stack.clear()
-       self.stack.push(*copy)
+        copy = list(self.stack)
+        flat = flatten_array(copy)
+        self.stack.clear()
+        self.stack.push(*flat)
 
     def increment(self):
         self.index += 1
@@ -2399,6 +2410,9 @@ class Script:
                 return eval(string)
 
             return fn.partial(error.InvalidQuoteSyntaxError)
+
+        if string[0] == '[' and string[-1] == ']':
+            return eval(string.replace(' ', ', '))
 
         if string in self.variables.keys():
             return self.variables[string]
