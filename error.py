@@ -18,7 +18,7 @@ def EmptyStackError(num, line):
     'The stack is empty, and is unable to be popped from'
 
 def IncongruentTypesError(num, line, command):
-    reason = "Unable to perform the command '{}' due to incostent type operands".format(command)
+    reason = "Unable to perform the command '{}' due to inconsistent type operands".format(command)
     base('IncongruentTypes', num, line, reason)
 
 def InvalidArgumentError(num, line, arg = None):
