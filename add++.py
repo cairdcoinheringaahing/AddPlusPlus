@@ -751,7 +751,7 @@ class StackScript:
                 try:
                     func = self.functions[cmd[sslice:-1]]
                 except:
-                    raise error.UnableToRetrieveFunctionError(line, outer[line-1], cmd[1:-1])
+                    error.UnableToRetrieveFunctionError(line, outer[line-1], cmd[1:-1])
                 
                 feed = []
                 if func.lamb:
@@ -801,13 +801,13 @@ class StackScript:
                     result = command(*[self.stack.pop() for _ in range(arity)])
                     
                 except TypeError:
-                    raise error.IncongruentTypesError(line, outer[line-1], cmd)
+                    error.IncongruentTypesError(line, outer[line-1], cmd)
                 
                 except:
-                    raise error.EmptyStackError(line, outer[line-1])
+                    error.EmptyStackError(line, outer[line-1])
                     
                 if result == Null:
-                    raise error.InvalidSymbolError(line, outer[line-1], cmd)
+                    error.InvalidSymbolError(line, outer[line-1], cmd)
 
                 if type(result) == Stack:
                     self.stack.clear()
@@ -2533,7 +2533,7 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--debug', help = 'Output information in vanilla mode\nWorks for versions 5.5 or greater', action = a)
     
     parser.add_argument('--version', help = 'Specify version to use', metavar = 'VERSION')
-    parser.add_argument('--specify', help = 'Specify implcit function', metavar = 'FUNCTION')
+    parser.add_argument('--specify', help = 'Specify implicit function', metavar = 'FUNCTION')
 
     verbose = parser.add_mutually_exclusive_group()
     verbose.add_argument('-va', '--verbose-all', help = 'Make all sections verbose', action = a)
