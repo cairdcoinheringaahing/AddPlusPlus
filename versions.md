@@ -69,6 +69,7 @@
 - **[v5.4]** : Arbitrary variable names allowed - some commands removed
 - **[v5.5]** : Allow named arguments to be passed to functions
 - **[v5.7]** : REPL added. Python and extension commands added
+- **[v5.8]** : Add do-while loops
 
 [v0.0]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/b3210742638b802179fdf014081af39e32d2c901
 [v0.1]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/f120f7624530f7c69c26e6e082d6f76f5be85b5d
@@ -129,3 +130,4 @@
 [v5.4]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/1620bf1696669d4e868b5fd5ab983cd45b8b340a
 [v5.5]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/8f07025b2cfd2aa5f0538c8e4dab90745fef616b
 [v5.7]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/5e77b183b975b9dc767544863479cc660e6c73bb
+[v5.8]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/c4c91ba26c77932d08bd72aa868546b3eeb154f0
