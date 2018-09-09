@@ -888,6 +888,8 @@ class StackScript:
         instr = False
         incall = False
         invar = False
+	
+	text = text.replace('{', ' {').replace('}', '} ')
         
         for i, char in enumerate(text):
 
