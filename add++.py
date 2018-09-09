@@ -1469,7 +1469,6 @@ class StackScript:
 
     def quickeach(self, cmd, left, right = None):
         if isinstance(cmd, list):
-            print('€', cmd)
             quick, cmd = cmd
             if quick in '¬¦':
                 arity = 1
