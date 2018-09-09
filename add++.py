@@ -44,7 +44,6 @@ FLAGS.remove('lambda')
 FLAGS = ''.join(FLAGS)
 
 number = re.compile(r'''
-
     ^
     ((-?[1-9]\d*|0)\.\d+
     |
@@ -59,16 +58,13 @@ number = re.compile(r'''
 	(-?[1-9]\d*|0)
 	(\.\d+)?j
     ))$
-
 ''', re.VERBOSE)
 
 varassign = re.compile(r'''
-
     ^
     ([A-Za-z]+)
     :
     (.*)$
-
 ''', re.VERBOSE)
 
 varswap = re.compile(r'''
@@ -78,47 +74,37 @@ varswap = re.compile(r'''
     &
     ([A-Za-z]+)
     $
-
 ''', re.VERBOSE)
 
 varactive = re.compile(r'''
-
     ^
     `
     ([A-Za-z]+)
     $
-
 ''', re.VERBOSE)
 
 comment = re.compile(r'''
-
     ^
     \s+
     (.*?)
     (;
     .*)?$
-
 ''', re.VERBOSE)
 
 infix = re.compile(r'''
-
     ^
     ([A-Za-z]+|.*?)?
     ([{}])
     (.*)$
-
 '''.format(INFIX), re.VERBOSE)
 
 prefix = re.compile(r'''
-
     ^
     ([{}])
     ([A-Za-z]+|.*?)$
-
 '''.format(PREFIX), re.VERBOSE)
 
 construct = re.compile(r'''
-
     ^(
         ((W|I|D)
          ([A-Za-z]+
@@ -136,7 +122,6 @@ construct = re.compile(r'''
 '''.format(INFIX, PREFIX), re.VERBOSE)
 
 function = re.compile(r'''
-
     ^
     (?:D,([A-Za-z]+),((?:[@#]{}[A-Za-z]+|[@{}]|[^,])*),(.*)$)
     |
@@ -145,11 +130,9 @@ function = re.compile(r'''
     (?:\$(lambda\ \d+)>?(.*)$)
     |
     (?:\$([A-Za-z]+)>?(.*)$)
-
 '''.format('{1,2}', FLAGS, FLAGS), re.VERBOSE)
 
 additionals = re.compile(r'''
-
     ^
     (
         ]
@@ -160,7 +143,6 @@ additionals = re.compile(r'''
         .*
     )
     $
-
 ''', re.VERBOSE)
 
 class addpp(object):
@@ -889,7 +871,7 @@ class StackScript:
         incall = False
         invar = False
 	
-	text = text.replace('{', ' {').replace('}', '} ')
+        text = text.replace('{', ' {').replace('}', '} ')
         
         for i, char in enumerate(text):
 
