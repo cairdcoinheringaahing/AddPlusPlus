@@ -354,13 +354,25 @@ def groupby(func, array):
     return list(map(lambda a: a[-1], sorted(groups.items(), key = lambda a: a[0])))
 
 def flatten_array(array):
-   flat = []
-   if isinstance(array, list):
-       for item in array:
-           flat += flatten_array(item)
-   else:
-       flat.append(array)
-   return flat
+    flat = []
+    if isinstance(array, list):
+        for item in array:
+            flat += flatten_array(item)
+    else:
+        flat.append(array)
+    return flat
+
+def tighten(array):
+    tight = []
+    if isinstance(array, list):
+        for item in array:
+            if isinstance(item, list):
+                tight += item
+            else:
+                tight.append(item)
+    else:
+        tight.append(array)
+    return tight
 
 def base(value, basediv):
     digits = []
@@ -873,8 +885,6 @@ class StackScript:
         incall = False
         invar = False
         
-        text = text.replace('{', ' {').replace('}', '} ')
-        
         for i, char in enumerate(text):
 
             if char == '¡':
@@ -933,7 +943,7 @@ class StackScript:
                 pass
             else:
                 tokens.append(f)
-                
+
         chain = []
 
         index = 0
@@ -985,7 +995,7 @@ class StackScript:
                         last = False
                         continue
 
-                    if char in 'Bb':
+                    if char in 'Bb' and not last:
                         tkns.append(char)
                         last = 2
                         continue
@@ -1455,6 +1465,7 @@ class StackScript:
 
     def quickeach(self, cmd, left, right = None):
         if isinstance(cmd, list):
+            print('€', cmd)
             quick, cmd = cmd
             if quick in '¬¦':
                 arity = 1
@@ -1982,10 +1993,16 @@ class Function:
         self.vars = vars_
         
         self.lamb = self.switches['lambda']
-        self.args = len(self.switches['@'])
         self.original = self.switches['@'].copy()
 
         self.calls = 0
+        self.args = 0
+
+        for elem in self.switches['@']:
+            if elem == Null:
+                self.args += 1
+            if isinstance(elem, dict):
+                self.args += sum(i == Null for i in elem.values())
 
     def __call__(self, *args, funccall = False, recur = False):
         prov = []
@@ -2028,7 +2045,7 @@ class Function:
             prov = [prov[:]]
 
         if self.switches['~']:
-            prov = sum(prov, [])
+            prov = tighten(prov)
 
         if self.switches['#']:
             prov = prov[::-1]
@@ -2068,6 +2085,7 @@ class Function:
         
         if self.switches[':']:
             print(ret)
+            return ret
             if funccall:
                 return ret
             else:
