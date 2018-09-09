@@ -14,7 +14,7 @@ import error
 import extensions
 
 GLOBALREGISTER = None
-VERSION = 5.7
+VERSION = 5.8
 
 identity = lambda a: a
 
@@ -120,7 +120,7 @@ prefix = re.compile(r'''
 construct = re.compile(r'''
 
     ^(
-        ((W|I)
+        ((W|I|D)
          ([A-Za-z]+
           (?:
            [{}]
@@ -249,8 +249,14 @@ def splitting(string, splitter):
 
     return cmds
 
-def whileloop(inputs, var, v, funcs, cond, *run):
+def whileloop(inputs, var, v, funcs, cond, *run, do = False):
     run = '\n'.join(run)
+    
+    if do:
+        state = Script(run, inputs, vars_ = [var, v, funcs])
+        var = state.variables
+        v = state.var
+        
     while Script(cond, inputs, loop = True, vars_ = [var, v, funcs]).variables['#']:
         state = Script(run, inputs, vars_ = [var, v, funcs])
         var = state.variables
@@ -268,6 +274,9 @@ def forloop(inputs, var, v, funcs, itervar, *run):
         
     var.pop('i', None)
     return var.copy()
+
+def doloop(inputs, var, v, funcs, cond, *run):
+    return whileloop(inputs, var, v, funcs, cond, *run, do = True)
 
 def each(inputs, var, v, funcs, itervar, *run):
     run = '\n'.join(run)
@@ -2245,7 +2254,7 @@ class Script:
 
         cond = ''.join(head)
         
-        if cond in self.variables.keys() and loop in 'WI':
+        if cond in self.variables.keys() and loop in 'WID':
             cond = 'B' + cond
             
         body = captures.pop().strip(',')
@@ -2466,6 +2475,7 @@ class Script:
 
             'W': whileloop,
             'F': forloop,
+            'D': doloop,
             'E': each,
             'I': ifstatement,
 
