@@ -838,7 +838,7 @@ class StackScript:
                     self.stack.clear()
                     self.stack.push(*result)
 
-                elif result is not None and result != []:
+                elif result is not None:
                     self.stack.push(result)
 
     def runquick(self, quick, cmd):
@@ -1238,7 +1238,7 @@ class StackScript:
                 'bK':(-1, lambda: Null                                   ),
                 'bL':( 1, lambda x: len(x)                               ),
                 'bM':( 1, lambda x: max(x)                               ),
-                'bN':(-1, lambda: Null                                   ),
+                'bN':( 1, lambda x: x == []                              ),
                 'bO':(-1, lambda: Null                                   ),
                 'bP':(-1, lambda: Null                                   ),
                 'bQ':(-1, lambda: Null                                   ),
