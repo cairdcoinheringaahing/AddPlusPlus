@@ -21,4 +21,19 @@ getcmd = {
         time.sleep
     ),
 
+    'integer': (
+        1,
+        int
+    ),
+
+    'string': (
+        1,
+        str
+    ),
+
+    'array': (
+        1,
+        list
+    ),
+
 }
