@@ -801,7 +801,11 @@ class StackScript:
 
             elif cmd[0] == '`':
                 var = cmd.strip('`')
-                self.stack.push(self.vars[var])
+                if var[0] == '$':
+                    d = self.functions
+                else:
+                    d = self.vars
+                self.stack.push(d[var])
                 
             else:
                 
