@@ -14,7 +14,7 @@ import error
 import extensions
 
 GLOBALREGISTER = None
-VERSION = 5.8
+VERSION = 5.9
 
 identity = lambda a: a
 
@@ -1068,7 +1068,7 @@ class StackScript:
                 'R': ( 1, lambda x: list(range(1, x+1))                 ),
                 'S': ( 0, lambda: self.remove_duplicates()              ),
                 'T': ( 2, lambda x, y: [x[z: z+y] for z in range(0, len(x) - y + 1, y)] + ([x[len(x) - y + 1:]] if len(x) % y else [])	),
-                'U': (-1, lambda: Null                                  ),
+                'U': ( 2, lambda x, y: self.assign_var(x, y)            ),
                 'V': ( 1, lambda x: self.store(x)                       ),
                 'X': ( 2, lambda x, y: [x for _ in range(y)]            ),
                 'Y': (-1, lambda: Null                                  ),
@@ -1103,8 +1103,8 @@ class StackScript:
                 'u': (-1, lambda: Null                                  ),
                 'v': ( 1, lambda x: eval(x)                             ),
                 'w': (-1, lambda: Null                                  ),
-		'x': ( 1, lambda x: [self.stack[-1] for _ in range(x)]  ),
-		'y': ( 1, lambda x: [self.stack.push(self.stack[-1]) for _ in range(x)][:0]         ),
+                'x': ( 1, lambda x: [self.stack[-1] for _ in range(x)]  ),
+                'y': ( 1, lambda x: [self.stack.push(self.stack[-1]) for _ in range(x)][:0]         ),
                 'z': ( 2, lambda x, y: list(map(list, zip(x, y)))       ),
                 
                 '|': ( 1, lambda x: abs(x)                              ),
@@ -1281,6 +1281,9 @@ class StackScript:
     def assign(self, value):
         global GLOBALREGISTER
         GLOBALREGISTER = value
+
+    def assign_var(self, val, var):
+        self.vars[var] = val
         
     def collect(self, iterable = None):
         usestack = False
