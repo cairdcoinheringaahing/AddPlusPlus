@@ -816,9 +816,9 @@ class StackScript:
                 if result == Null:
                     error.InvalidSymbolError(line, outer[line-1], cmd)
 
-                if type(result) == Stack:
-                    self.stack.clear()
-                    self.stack.push(*result)
+                #if type(result) == Stack:
+                #    self.stack.clear()
+                #    self.stack.push(*result)
 
                 elif result is not None:
                     self.stack.push(result)
