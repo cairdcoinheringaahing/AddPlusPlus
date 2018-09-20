@@ -1285,7 +1285,7 @@ class StackScript:
         global GLOBALREGISTER
         GLOBALREGISTER = value
 
-    def assign_var(self, val, var):
+    def assign_var(self, var, val):
         self.vars[var] = val
         
     def collect(self, iterable = None):
