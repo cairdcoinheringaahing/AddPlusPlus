@@ -636,6 +636,9 @@ class Stack(list):
         for v in values:
             if v in [True, False]:
                 v = int(v)
+		
+            if hasattr(v, '__iter__') and all(x in [True, False]for x in v):
+                v = list(map(int, v))
                 
             try:
                 self.append(v.replace("'",'"'))
