@@ -29,7 +29,7 @@
 
 - **[v2.0]** : Lambdas created
 - **[v2.1]** : Register created
-- **[v2.2]** : New `E`ach commands
+- **[v2.2]** : New `E`ach commands (~100th commit!)
 - **[v2.3]** : Add `--error` command line option
 - **[v2.4]** : New while commands added
 - **[v2.5.1]** : Added repeat command
