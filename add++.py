@@ -816,9 +816,9 @@ class StackScript:
                 if result == Null:
                     error.InvalidSymbolError(line, outer[line-1], cmd)
 
-                #if type(result) == Stack:
-                #    self.stack.clear()
-                #    self.stack.push(*result)
+                if type(result) == Stack:
+                    self.stack.clear()
+                    self.stack.push(*result)
 
                 elif result is not None:
                     self.stack.push(result)
@@ -1138,7 +1138,7 @@ class StackScript:
                 'BH':(-1, lambda: Null                                  ),
                 'BI':(-1, lambda: Null                                  ),
                 'BJ':( 0, lambda: self.a(lambda i: ''.join(map(str, i)))),
-                'BK':( 0, lambda: GLOBALREGISTER                        ),
+                'BK':( 0, lambda: self.stack.push(GLOBALREGISTER)       ),
                 'BL':( 0, lambda: self.a(len)                           ),
                 'BM':( 0, lambda: self.a(max)                           ),
                 'BN':(-1, lambda: Null                                  ),
