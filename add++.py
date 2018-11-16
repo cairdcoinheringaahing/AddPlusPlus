@@ -1088,7 +1088,7 @@ class StackScript:
                 'c': ( 0, lambda: self.stack.clear()                    ),
                 'd': ( 0, lambda: self.stack.push(self.stack[-1])       ),
                 'e': ( 2, lambda x, y: x in y                           ),
-                'f': ( 0, lambda: list(filter(isprime, self.factors())) ),
+                'f': ( 1, lambda: list(filter(isprime, self.factors(x)))),
                 'g': (-1, lambda: Null                                  ),
                 'h': ( 0, lambda: print(self.stack)                     ),
                 'i': ( 1, lambda x: int(x)                              ),
