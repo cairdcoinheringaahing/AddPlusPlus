@@ -1088,7 +1088,7 @@ class StackScript:
                 'c': ( 0, lambda: self.stack.clear()                    ),
                 'd': ( 0, lambda: self.stack.push(self.stack[-1])       ),
                 'e': ( 2, lambda x, y: x in y                           ),
-                'f': ( 1, lambda: list(filter(isprime, self.factors(x)))),
+                'f': ( 1, lambda x: list(filter(isprime, self.factors(x)))                          ),
                 'g': (-1, lambda: Null                                  ),
                 'h': ( 0, lambda: print(self.stack)                     ),
                 'i': ( 1, lambda x: int(x)                              ),
@@ -1946,7 +1946,9 @@ class StackScript:
             code = chr(code)
         if type(code) == list:
             code = ''.join(map(str, code))
-        print(code)
+        print('Executing: {}'.format(code), file = sys.stderr)
+        ret = self(code)
+        return ret.run(False, False)
         
     def store(self, value):
         self.register = value
