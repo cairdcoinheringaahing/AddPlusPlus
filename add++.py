@@ -14,7 +14,7 @@ import error
 import extensions
 
 GLOBALREGISTER = None
-VERSION = 5.9
+VERSION = 5.10
 
 identity = lambda a: a
 
@@ -379,6 +379,14 @@ def deduplicate(array):
     return final
 
 def initiate(settings, executor):
+    if settings.suite:
+        settings.suite = False
+        arguments = settings.input
+        for arg in arguments:
+            settings.input = [arg]
+            initiate(settings, executor)
+        return
+        
     if settings.error:
         if settings.vernum > 5.5:
             executor(settings.code, settings.input,
@@ -2208,11 +2216,11 @@ class Script:
         if construct.match(string):
             return self.construct
 
-        if infix.match(string):
-            return self.infix
-
         if prefix.match(string):
             return self.prefix
+
+        if infix.match(string):
+            return self.infix
 
         return lambda _: error.InvalidSyntaxError(self.index, self.line)
 
@@ -2297,7 +2305,7 @@ class Script:
             return left
         if hasattr(right, 'with_traceback') or isinstance(right, fn.partial):
             return right
-        
+
         ret = oper(left, right)
         if ret is not None:
             self.variables[self.var] = ret
@@ -2316,7 +2324,7 @@ class Script:
         arg = self.eval(arg)
         if hasattr(arg, 'with_traceback') or isinstance(arg, fn.partial):
             return arg
-        
+
         ret = oper(arg)
 
         if not_none(ret):
@@ -2554,6 +2562,7 @@ if __name__ == '__main__':
     parser.add_argument('-vh', '--version-help', help = 'Output all versions available', action = a)
     parser.add_argument('-o', '--suppress', help = 'Suppress output', action = a)
     parser.add_argument('-d', '--debug', help = 'Output information in vanilla mode\nWorks for versions 5.5 or greater', action = a)
+    parser.add_argument('-s', '--suite', help = 'Run the program over each of the arguments', action = a)
     
     parser.add_argument('--version', help = 'Specify version to use', metavar = 'VERSION')
     parser.add_argument('--specify', help = 'Specify implicit function', metavar = 'FUNCTION')
