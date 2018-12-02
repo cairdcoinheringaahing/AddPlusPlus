@@ -71,7 +71,7 @@
 - **[v5.7]** : REPL added. Python and extension commands added
 - **[v5.8]** : Add do-while loops
 - **[v5.9]** : Add the ablilty to change variable from functional mode
-- **[v5.10]** : Add the `--suite` command line flag
+- **[v5.10]** : Add the `--suite` command line flag (300th commit!)
 
 [v0.0]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/b3210742638b802179fdf014081af39e32d2c901
 [v0.1]: https://github.com/cairdcoinheringaahing/AddPlusPlus/commit/f120f7624530f7c69c26e6e082d6f76f5be85b5d
