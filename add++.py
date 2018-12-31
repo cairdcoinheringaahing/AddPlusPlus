@@ -18,7 +18,7 @@ VERSION = 5.10
 
 identity = lambda a: a
 
-INFIX = r'+*/^><%=|RD-\\'
+INFIX = r'+*/^><%=|RD\-\\'
 PREFIX = '!#NROoHhd_B'
 
 DEFAULT = {
